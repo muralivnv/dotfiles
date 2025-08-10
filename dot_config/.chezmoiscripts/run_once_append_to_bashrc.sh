@@ -6,8 +6,6 @@ BASHRC="$HOME/.bashrc"
 # List all scripts you want to source
 FILES=(
   "$HOME/.config/bash_config.sh"
-  "$HOME/.config/bash_aliases.sh"
-  "$HOME/.config/bash_custom_functions.sh"
 )
 
 for file in "${FILES[@]}"; do
