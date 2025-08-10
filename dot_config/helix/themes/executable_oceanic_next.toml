@@ -1,0 +1,103 @@
+"attribute"                 = { fg = "yellow"                                                   }
+"comment"                   = { fg = "light-gray"                                               }
+"constant"                  = { fg = "forest_green"                                             }
+"constant.numeric"          = { fg = "forest_green"                                             }
+"constant.builtin"          = { fg = "forest_green"                                             }
+"constant.character.escape" = { fg = "moss_green"                                               }
+"constructor"               = { fg = "yellow"                                                   }
+"function"                  = { fg = "blue"                                                     }
+"function.builtin"          = { fg = "blue"                                                     }
+"function.macro"            = { fg = "purple"                                                   }
+"preproc_ifdef"             = { fg = "purple"                                                   }
+"keyword"                   = { fg = "purple"                                                   }
+"keyword.control"           = { fg = "purple"                                                   }
+"keyword.control.import"    = { fg = "purple"                                                   }
+"keyword.directive"         = { fg = "purple"                                                   }
+"label"                     = { fg = "purple"                                                   }
+"namespace"                 = { fg = "purple"                                                   }
+"operator"                  = { fg = "cyan"                                                     }
+"keyword.operator"          = { fg = "cyan"                                                     }
+"special"                   = { fg = "blue"                                                     }
+"string"                    = { fg = "green"                                                    }
+"type"                      = { fg = "yellow"                                                   }
+"variable.builtin"          = { fg = "red"                                                      }
+"variable.parameter"        = { fg = "#F99157"                                                  }
+"variable.other.member"     = { fg = "blue"                                                     }
+"variable.other.enummember" = { fg = "red"                                                      }
+"variable"                  = { fg = "white"                                                    }
+"punctuation"               = { fg = "white"                                                    }
+"punctuation.special"       = { fg = "#F99157"                                                  }
+
+"markup.heading"            = { fg = "red"                                                      }
+"markup.raw.inline"         = { fg = "green"                                                    }
+"markup.raw.block"          = { fg = "white"                                                    }
+"markup.bold"               = { fg = "gold", modifiers = ["bold"]                               }
+"markup.italic"             = { fg = "purple", modifiers = ["italic"]                           }
+"markup.list"               = { fg = "moss_green"                                               }
+"markup.quote"              = { fg = "forest_green"                                             }
+"markup.link.url"           = { fg = "blue", modifiers = ["underlined"]                         }
+"markup.link.text"          = { fg = "white"                                                    }
+"markup.link.label"         = { fg = "white"                                                    }
+
+"diff.plus"                 = "green"
+"diff.delta"                = "gold"
+"diff.minus"                = "red"
+
+"info"                      = { fg = "cyan"                                                     }
+"hint"                      = { fg = "green"                                                    }
+"diagnostic"                = { modifiers = ["bold"]                                            }
+"warning"                   = { fg = "yellow"                                                   }
+"error"                     = { fg = "red"                                                      }
+
+"ui.background"             = { bg = "dark"                                                     }
+#"ui.virtual"                = { fg = "faint-gray"                                              }
+#"ui.virtual.indent-guide"   = { fg = "faint-gray"                                              }
+#"ui.virtual.whitespace"     = { fg = "light-gray"                                              }
+#ui.virtual.ruler"          = { bg = "gray"                                                     }
+
+"ui.cursor"                 = { fg = "white", modifiers = ["reversed"]                          }
+"ui.cursor.primary"         = { fg = "white", modifiers = ["reversed"]                          }
+"ui.cursor.match"           = { fg = "red", modifiers = ["bold", "underlined"] }
+
+"ui.selection"              = { bg = "#474b43a4"                                                }
+"ui.selection.primary"      = { bg = "#474b43a4"                                                }
+"ui.cursorline.primary"     = { bg = "#313131"                                                  }
+
+"ui.linenr"                 = { fg = "#505050"                                                  }
+"ui.linenr.selected"        = { fg = "white"                                                    }
+
+"ui.statusline"             = { fg = "white", bg = "#313131"                                    }
+"ui.statusline.inactive"    = { fg = "#808080", bg = "#242424"                                  }
+"ui.statusline.normal"      = { fg = "dark", bg = "forest_green"                                }
+"ui.statusline.insert"      = { fg = "dark", bg = "yellow"                                      }
+"ui.statusline.select"      = { fg = "dark", bg = "blue"                                        }
+
+"ui.text"                   = { fg = "white"                                                    }
+"ui.text.focus"             = { fg = "white", bg = "#404040"                                    }
+
+"ui.help"                   = { fg = "white", bg = "#282928"                                    }
+"ui.popup"                  = { bg = "#282928"                                                  }
+"ui.window"                 = { fg = "cyan"                                                     }
+"ui.menu"                   = { fg = "white", bg = "#282928"                                    }
+"ui.menu.selected"          = { fg = "black", bg = "red"                                        }
+"ui.menu.scroll"            = { fg = "white", bg = "#474b43a4"                                  }
+
+[palette]
+
+yellow       = "#e9bf6c"
+blue         = "#6699cc"
+red          = "#e4767b"
+purple       = "#c594c5"
+green        = "#99c794"
+cyan         = "#5fb3b3"
+white        = "#d4d4d4"
+dark         = "#1f2122"
+forest_green = "#97bc62"
+moss_green   = "#58865a"
+black        = "#16181a"
+light-black  = "#7f7f7f"
+gray         = "#252d30"
+faint-gray   = "#abb2bf"
+light-gray   = "#636c6e"
+linenr       = "#282c34"
+gold         = "#d19a66"
