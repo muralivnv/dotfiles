@@ -1,6 +1,10 @@
 import subprocess
+import os
 
 FZF_ESC_RET_CODE = 130
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
+LOG_SCRIPT = os.path.join(SCRIPT_DIR, "git_log.py")
 
 class StatusPage:
     def __init__(self):
@@ -28,10 +32,10 @@ class StatusPage:
             "--bind 'alt-c:execute(SUMMARY=$(gum input --placeholder \"Summary of this commit\");" \
             "DESCRIPTION=$(gum write --placeholder \"Details of this commit\"); "\
             "gum confirm \"Commit changes?\" && git commit -m \"$SUMMARY\" -m \"$DESCRIPTION\")+reload-sync(git status -s)' "\
-            "--bind 'alt-l:become(python3 {{ dir .chezmoi.targetFile }}/git_log.py)' "\
+            f"--bind 'alt-l:become(python3 {LOG_SCRIPT})' "\
             "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
             "--bind=tab:down,shift-tab:up "\
-            "--bind 'alt-r:become(python3 {{ dir .chezmoi.targetFile }}/git_repo_list.py)' "
+            f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "
         )
 
     def run(self):

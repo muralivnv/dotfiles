@@ -1,6 +1,7 @@
 import subprocess
 from typing import Optional, Tuple
 from argparse import ArgumentParser
+import os
 
 DELIMITER               = "@"
 FZF_ESC_RET_CODE        = 130
@@ -13,6 +14,9 @@ GIT_LOG_BASE_COMMAND    = "git log --oneline --graph --decorate --color --pretty
 CAPTURE_AND_SHOW_ERROR  = f"1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt"
 CREATE_BRANCH_PARENT_PROMPT = "gum input --header.foreground=\"#00ff00\" --header=\"Create branch from\" --no-show-help"
 CREATE_BRANCH_NAME_PROMPT = "gum input --header.foreground=\"#00ff00\" --header=\"Branch name\" --no-show-help"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
+COMMIT_SCRIPT = os.path.join(SCRIPT_DIR, "git_commit.py")
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)
@@ -42,13 +46,13 @@ class BranchPage:
                                                    f"PARENT=$({CREATE_BRANCH_PARENT_PROMPT} --value $BR) && "\
                                                    f"CHILD=$({CREATE_BRANCH_NAME_PROMPT}) && "\
                                                    f"$(git branch $CHILD $PARENT {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
+                                 f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                  f"--bind 'alt-f:execute(git fetch --all)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-F:execute(git pull --rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-P:execute(git push)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 "--bind 'alt-s:become(python3 ~/local_disk/app_dev/dotfiles/.config/scripts/commit.py)' "\
+                                 f"--bind 'alt-s:become(python3 {COMMIT_SCRIPT})' "\
                                  "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
-                                 "--bind 'alt-r:become(python3 ~/local_disk/app_dev/dotfiles/.config/scripts/repo_list.py)' "\
+                                 f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                  "--bind=tab:down,shift-tab:up "
                                  
         self._last_selected_line: int = 0
@@ -95,7 +99,7 @@ class LogPage:
                                                   f"gum confirm \"Apply changes from >>> $COMMIT <<<< ?\" --no-show-help && $(git cherry-pick --no-commit \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
                                   f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                   "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
-                                  "--bind 'alt-r:become(python3 ~/local_disk/app_dev/dotfiles/.config/scripts/repo_list.py)' "\
+                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                   "--bind=tab:down,shift-tab:up "
 
         self._last_selected_line: int = 0
@@ -136,7 +140,7 @@ class DiffPage:
                       f"--preview 'git show --format= {commit_hash} {{2}} | bat --color=always --language=Diff' "\
                       f"--header-label 'Info' --bind 'focus:+bg-transform-header:git show {commit_hash} -s' "\
                       "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
-                      "--bind 'alt-r:become(python3 ~/local_disk/app_dev/dotfiles/.config/scripts/repo_list.py)' "\
+                      f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                       "--bind=tab:down,shift-tab:up "
 
             output = subprocess.check_output(self._base_command + commit_hash + vis_cmd,
