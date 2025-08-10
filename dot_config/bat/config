@@ -1,0 +1,9 @@
+--map-syntax "*.{cu,cuh}:C++"
+
+--style="numbers,changes,header"
+
+--theme=gruvbox-dark
+
+--italic-text=always
+
+--color=always
