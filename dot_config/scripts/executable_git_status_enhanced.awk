@@ -15,4 +15,3 @@ substr($0,1,2) == "??" {
     if (staged != " ") print cS "S " c0 file;
     if (unstaged != " ") print cU "U " c0 file;
 }
-

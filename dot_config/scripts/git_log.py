@@ -5,18 +5,18 @@ import os
 
 DELIMITER               = "@"
 FZF_ESC_RET_CODE        = 130
-GIT_BRANCH_BASE_COMMAND = "git for-each-ref --count=10 --sort=-authordate --color --format=\"%(align:1,left)%(color:red)%(HEAD) "\
-                          "%(end)%(color:reset)%(color:green)%(align:50,left)%(refname:lstrip=2)%(end) %(color:yellow)%(align:8,left)"\
-                          "%(objectname:short)%(end)%(color:reset) %(color:cyan) %(align:60,left)%(contents:subject)%(end)%(color:reset) "\
-                          f"%(align:20,left)%(color:blue)%(authorname)%(color:reset)%(end) %(align:20,left)%(committerdate:relative)%(end)\" | nl -w1 -s\"{DELIMITER}\""
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
+COMMIT_SCRIPT = os.path.join(SCRIPT_DIR, "git_commit.py")
+GIT_BRANCH_SCRIPT = os.path.join(SCRIPT_DIR, "git_branch_enhanced.sh")
 
+GIT_BRANCH_BASE_COMMAND = f"bash {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
 GIT_LOG_BASE_COMMAND    = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
 CAPTURE_AND_SHOW_ERROR  = f"1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt"
 CREATE_BRANCH_PARENT_PROMPT = "gum input --header.foreground=\"#00ff00\" --header=\"Create branch from\" --no-show-help"
 CREATE_BRANCH_NAME_PROMPT = "gum input --header.foreground=\"#00ff00\" --header=\"Branch name\" --no-show-help"
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
-COMMIT_SCRIPT = os.path.join(SCRIPT_DIR, "git_commit.py")
+BRANCH_EXTRACT_COMMAND = "purl -extract \"#^\d+@([A-Za-z0-9._\/-]+)#\$1#\""
+COMMIT_EXTRACT_COMMAND = "purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\""
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)
@@ -31,22 +31,21 @@ class BranchPage:
     def __init__(self):
         self._vis_command: str = f" | " \
                                  f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} " \
-                                 "$(echo {} |  purl -extract \"#^\d+@[\*\s+]\s+([A-Za-z0-9._\/-]+)#\$1#\") ' --preview-window=bottom:70% " \
+                                 f"$(echo {{}} | {BRANCH_EXTRACT_COMMAND}) ' --preview-window=bottom:70% " \
                                  "--bind 'alt-b:execute(" \
-                                                   f"BR=$(echo {{}} |  purl -extract \"#^\d+{DELIMITER}[\*\s+]\s+([A-Za-z0-9._\/-]+)#\$1#\" | sed \"s#^origin/##\"); " \
+                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
                                                    f"gum confirm \"Checkout >>>> $BR <<<< ?\" --no-show-help && $(git switch \"$BR\" {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  "--bind 'alt-k:execute(" \
-                                                   f"BR=$(echo {{}} |  purl -extract \"#^\d+{DELIMITER}[\*\s+]\s+([A-Za-z0-9._\/-]+)#\$1#\" | sed \"s#^origin/##\"); " \
+                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
                                                    f"gum confirm \"Delete branch >>>> $BR? <<<< \" --no-show-help && $(git branch -d \"$BR\" {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  "--bind 'alt-K:execute(" \
-                                                   f"BR=$(echo {{}} |  purl -extract \"#^\d+{DELIMITER}[\*\s+]\s+([A-Za-z0-9._\/-]+)#\$1#\" | sed \"s#^origin/##\"); " \
+                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
                                                    f"gum confirm \"Force Delete branch >>>> $BR? <<<< \" --no-show-help && $(git branch -D \"$BR\" {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  "--bind 'alt-c:execute(" \
-                                                   f"BR=$(echo {{}} |  purl -extract \"#^\d+{DELIMITER}[\*\s+]\s+([A-Za-z0-9._\/-]+)#\$1#\" | sed \"s#^origin/##\"); " \
+                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
                                                    f"PARENT=$({CREATE_BRANCH_PARENT_PROMPT} --value $BR) && "\
                                                    f"CHILD=$({CREATE_BRANCH_NAME_PROMPT}) && "\
                                                    f"$(git branch $CHILD $PARENT {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                  f"--bind 'alt-f:execute(git fetch --all)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-F:execute(git pull --rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-P:execute(git push)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
@@ -54,7 +53,6 @@ class BranchPage:
                                  "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                  "--bind=tab:down,shift-tab:up "
-                                 
         self._last_selected_line: int = 0
 
     def run(self, query: Optional[str] = None) -> Tuple[bool, str]:
@@ -64,42 +62,48 @@ class BranchPage:
             selected_line = get_selected_line(output)
             if selected_line is not None:
                 self._last_selected_line = selected_line
-            return True, self._get_branch_name(output)
+            branch = self._get_branch_name(output)
+            if branch is None:
+                branch = ""
+            return True, branch
         except subprocess.CalledProcessError as e:
             if e.returncode != FZF_ESC_RET_CODE:
                 exit(e.returncode)
         return False, ""
 
-    def _get_branch_name(self, selection: str) -> str:
-        branch = selection.split(DELIMITER)[-1].split(" ")[-1].strip()
-        branch = branch.replace("remotes/", "")
-        return branch
+    def _get_branch_name(self, selection: str) -> Optional[str]:
+        try:
+            branch = selection.split(DELIMITER)[1].split(" ")[0].strip()
+            return branch
+        except:
+            pass
+        return None
 
 class LogPage:
     def __init__(self, log_limit: int):
         self._base_command: str = GIT_LOG_BASE_COMMAND + f" -n{log_limit} "
         self._vis_command: str  = f" | nl -w1 -s\"{DELIMITER}\" | " \
                                   f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "\
-                                  "--preview 'echo {} | purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\" | xargs git show | bat --color=always --language=Diff ' "\
+                                  f"--preview 'echo {{}} | {COMMIT_EXTRACT_COMMAND} | xargs git show | bat --color=always --language=Diff ' "\
                                   "--preview-window=bottom:70% "\
                                   "--bind 'alt-b:execute("\
-                                                  "COMMIT=$(echo {} | purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\"); "\
+                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); "\
                                                   f"gum confirm \"Checkout >>>> $COMMIT <<<< ?\" --no-show-help && $(git checkout \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
                                   "--bind 'alt-x:execute("\
-                                                  "COMMIT=$(echo {} | purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\"); BR=$(git branch --show-current); "\
+                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); BR=$(git branch --show-current); "\
                                                   f"gum confirm \"Soft reset $BR to >>> $COMMIT <<<< ?\" --no-show-help && $(git reset --soft \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
                                   "--bind 'alt-X:execute("\
-                                                  "COMMIT=$(echo {} | purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\"); BR=$(git branch --show-current); "\
+                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); BR=$(git branch --show-current); "\
                                                   f"gum confirm \"Hard reset $BR to >>> $COMMIT <<<< ?\" --no-show-help && $(git reset --hard \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
                                   "--bind 'alt-A:execute("\
-                                                  "COMMIT=$(echo {} | purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\"); "\
+                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); "\
                                                   f"gum confirm \"Cherry-pick >>> $COMMIT <<<< ?\" --no-show-help && $(git cherry-pick \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
                                   "--bind 'alt-a:execute("\
-                                                  "COMMIT=$(echo {} | purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\"); "\
+                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); "\
                                                   f"gum confirm \"Apply changes from >>> $COMMIT <<<< ?\" --no-show-help && $(git cherry-pick --no-commit \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
-                                  f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                   "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
                                   f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
+                                  f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                   "--bind=tab:down,shift-tab:up "
 
         self._last_selected_line: int = 0
@@ -113,15 +117,22 @@ class LogPage:
             selected_line = get_selected_line(output)
             if selected_line is not None:
                 self._last_selected_line = selected_line
-            return True, self._get_commit_hash(output)
+            commit_hash = self._get_commit_hash(output)
+            if commit_hash is None:
+                commit_hash = "HEAD"
+            return True, commit_hash
         except subprocess.CalledProcessError as e:
             if e.returncode != FZF_ESC_RET_CODE:
                 exit(e.returncode)
         return False, ""
 
     def _get_commit_hash(self, selection: str) -> str:
-        hash = selection.split(DELIMITER)[1].strip().split(' ')[1]
-        return hash
+        try:
+            hash = selection.split(DELIMITER)[1].strip().split(' ')[1]
+            return hash
+        except:
+            pass
+        return None
 
 class DiffPage:
     def __init__(self):

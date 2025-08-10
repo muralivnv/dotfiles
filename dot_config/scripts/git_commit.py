@@ -36,7 +36,7 @@ class StatusPage:
     def __init__(self):
         self._base_command = (
             f"{GIT_STATUS_COMMAND} | fzf --ansi --preview-window=right:70% --reverse --cycle "
-            f"{PREVIEW_COMMAND} --header='Git Status' "
+            f"{PREVIEW_COMMAND} --footer='Git Status' "
             f"--bind 'alt-s:execute-silent(git add {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})+down' "
             f"--bind 'alt-S:execute-silent(git add -u)+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-u:execute-silent(git restore --staged {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})+down' "
@@ -45,8 +45,8 @@ class StatusPage:
             f"--bind 'alt-K:execute-silent(rm -rf {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-p:execute({PATCH_COMMAND})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-e:execute($EDITOR {FILE_EXTRACTION})' "
-            "--bind 'alt-c:execute(SUMMARY=$(gum input --placeholder \"Summary of this commit\");" \
-            "DESCRIPTION=$(gum write --placeholder \"Details of this commit\"); "\
+            "--bind 'alt-c:execute(SUMMARY=$(gum input --width=100 --char-limit=80 --header=\"Commit Subject\" --header.foreground=\"#00ff00\");" \
+            "DESCRIPTION=$(gum write --width=100 --height=15 --show-cursor-line --show-line-numbers --char-limit=80 --header=\"Commit Message\" --header.foreground=\"#00ff00\"); "\
             f"gum confirm \"Commit changes?\" && git commit -m \"$SUMMARY\" -m \"$DESCRIPTION\")+reload-sync({GIT_STATUS_COMMAND})' "\
             f"--bind 'alt-l:become(python3 {LOG_SCRIPT})' "\
             "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
