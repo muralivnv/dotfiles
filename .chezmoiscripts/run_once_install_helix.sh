@@ -31,7 +31,9 @@ cd "$BIN_OUT/bin"
 ./hx --grammar fetch
 ./hx --grammar build
 
-cp -r "$SRC_DIR/runtime/" "$RUNTIME_PATH"
 rm -rf "$HELIX_CFG_PATH/runtime/grammars/sources"
+cp -r "$SRC_DIR/runtime/queries" "$RUNTIME_PATH/runtime/queries"
+cp -r "$SRC_DIR/runtime/themes" "$RUNTIME_PATH/runtime/themes"
+cp "$SRC_DIR/runtime/tutor" "$RUNTIME_PATH/runtime/tutor"
 
 echo "Helix $VERSION built successfully and installation complete."
