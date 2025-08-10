@@ -1,0 +1,47 @@
+import subprocess
+
+FZF_ESC_RET_CODE = 130
+
+class StatusPage:
+    def __init__(self):
+        self._base_command = (
+            "git status -s | fzf --ansi --preview-window=bottom:70% --reverse --cycle --preview '"
+            "status=$(echo {} | cut -c1-2); "
+            "file=$(echo {} | cut -c4-); "
+            "staged=${status:0:1}; "
+            "unstaged=${status:1:1}; "
+            "if [ \"$staged\" != \" \" ] && [ \"$unstaged\" != \" \" ]; then "
+            "    git diff --color=always HEAD -- \"$file\" | bat --color=always --language=Diff; "
+            "elif [ \"$staged\" != \" \" ]; then "
+            "    git diff --color=always --cached -- \"$file\" | bat --color=always --language=Diff; "
+            "else "
+            "    git diff --color=always -- \"$file\" | bat --color=always --language=Diff; "
+            "fi' "
+            "--bind 'alt-s:execute-silent(git add $(echo {} | cut -c4-))+reload-sync(git status -s)+down' "
+            "--bind 'alt-S:execute-silent(git add -u)+reload-sync(git status -s)' "
+            "--bind 'alt-u:execute-silent(git restore --staged $(echo {} | cut -c4-))+reload-sync(git status -s)+down' "
+            "--bind 'alt-U:execute-silent(git restore --staged .)+reload-sync(git status -s)' "
+            "--bind 'alt-k:execute-silent(git checkout HEAD $(echo {} | cut -c4-))+reload-sync(git status -s)' "
+            "--bind 'alt-K:execute-silent(rm -rf $(echo {} | cut -c4-))+reload-sync(git status -s)' "
+            "--bind 'alt-p:execute(git add -p $(echo {} | cut -c4-))+reload-sync(git status -s)' "
+            "--bind 'alt-e:execute($EDITOR $(echo {} | cut -c4-))' "
+            "--bind 'alt-c:execute(SUMMARY=$(gum input --placeholder \"Summary of this commit\");" \
+            "DESCRIPTION=$(gum write --placeholder \"Details of this commit\"); "\
+            "gum confirm \"Commit changes?\" && git commit -m \"$SUMMARY\" -m \"$DESCRIPTION\")+reload-sync(git status -s)' "\
+            "--bind 'alt-l:become(python3 {{ dir .chezmoi.targetFile }}/git_log.py)' "\
+            "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
+            "--bind=tab:down,shift-tab:up "\
+            "--bind 'alt-r:become(python3 {{ dir .chezmoi.targetFile }}/git_repo_list.py)' "
+        )
+
+    def run(self):
+        try:
+            subprocess.check_output(self._base_command, shell=True, universal_newlines=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            if e.returncode != FZF_ESC_RET_CODE:
+                exit(e.returncode)
+        return False
+
+if __name__ == "__main__":
+    StatusPage().run()

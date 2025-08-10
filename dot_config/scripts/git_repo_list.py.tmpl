@@ -1,0 +1,25 @@
+import subprocess
+import os
+import shlex
+
+{{- if or (not .git_repo_list) (eq (len .git_repo_list) 0) -}}
+{{ fail "git_repo_list is empty – please set it in your local $HOME/chezmoi/chezmoi.toml" }}
+{{- end }}
+
+DEV_FOLDERS = [
+    {{- range .git_repo_list }}
+        {{ printf "%q" . }},
+    {{- end }}
+]
+
+REPOS = {os.path.basename(d): d for d in DEV_FOLDERS}
+SCRIPT_DIR = "{{ dir .chezmoi.targetFile }}"
+
+CMD = "fzf --delimiter \"@\" --reverse "\
+      f"--bind 'enter:become(cd {{ printf "{{2}}" }}; python3 {SCRIPT_DIR}/git_log.py)' "\
+      "--bind=tab:down,shift-tab:up --cycle --with-nth=1"
+
+if __name__ == "__main__":
+    p = subprocess.Popen(shlex.split(CMD),
+                       stdin=subprocess.PIPE, text=True)
+    p.communicate(input="\n".join([f"{k}@{v}" for k, v in REPOS.items()]))

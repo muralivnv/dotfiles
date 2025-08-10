@@ -1,0 +1,203 @@
+theme = "ronin"
+
+[editor]
+middle-click-paste = false
+cursorline = true
+true-color = true
+color-modes = true
+line-number = "relative"
+gutters = ["diagnostics", "spacer", "line-numbers", "spacer"]
+idle-timeout = 5
+completion-trigger-len = 1
+
+[editor.statusline]
+right = ["diagnostics", "selections", "register", "position", "total-line-numbers", "file-encoding", "read-only-indicator"]
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+
+[editor.file-picker]
+hidden = true # ignore hidden
+
+[editor.lsp]
+enable = false
+auto-signature-help = false
+snippets = false
+
+[editor.whitespace.render]
+tab = "all"
+
+[editor.whitespace.characters]
+tab = "→"
+tabpad = "·" # Tabs will look like "→···" (depending on tab width)
+
+# https://docs.helix-editor.com/keymap.html#select--extend-mode
+# https://github.com/helix-editor/helix/blob/b58899bc8e0f339fd83a1740a896fcc62976f7a7/helix-term/src/commands.rs#L197
+[keys.normal]
+"A-e"     = ["collapse_selection", "insert_mode"]
+"ret"     = ["insert_newline", "normal_mode"]
+
+i         = "move_line_up"
+I         = "extend_line_up"
+"A-i"     = "move_line_up"
+"A-I"     = "extend_line_up"
+k         = "move_line_down"
+K         = "extend_line_down"
+"A-k"     = "move_line_down"
+"A-K"     = "extend_line_down"
+"A-j"     = ["move_prev_word_start", "collapse_selection"]
+j         = "move_prev_word_start"
+J         = "extend_prev_word_start"
+"A-J"     = "extend_prev_word_start"
+"A-l"     = ["move_next_word_start", "collapse_selection"]
+l         = "move_next_word_start"
+L         = "extend_next_long_word_start"
+"A-L"     = "extend_next_word_start"
+"A-u"     = "move_char_left"
+u         = "move_char_left"
+U         = "extend_char_left"
+"A-U"     = "extend_char_left"
+o         = "move_char_right"
+"A-o"     = "move_char_right"
+O         = "extend_char_right"
+"A-O"     = "extend_char_right"
+n         = "page_cursor_half_down"
+p         = "page_cursor_half_up"
+">"       = "repeat_last_motion"
+","       = ["goto_line_end", "move_char_right"]
+";"       = "goto_first_nonwhitespace"
+"<"       = "extend_to_line_end"
+"R"       = ["delete_selection", "paste_clipboard_before"]
+esc       = "keep_primary_selection"
+backspace = "delete_char_backward"
+"["       = { "[" = "jump_backward" }
+"]"       = { "]" = "jump_forward"  }
+"\\"    = "vsplit"
+"|"     = "hsplit"
+"'"     = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-file-picker"
+"tab"   = "indent"
+"S-tab" = "unindent"
+"A-t"   = "smart_tab"
+
+C-s       = ":w"
+C-z       = "undo"
+C-y       = "redo"
+C-v       = "paste_clipboard_before"
+C-S-v     = "paste_clipboard_after"
+C-c       = "yank_main_selection_to_clipboard"
+C-x       = ["yank_main_selection_to_clipboard", "delete_selection"]
+"C-n"     = "search_next"
+"C-p"     = "search_prev"
+"C-r"     = ":reload-all"
+"A-q"     = "toggle_comments"
+x         = "extend_line"
+"V"       = ["goto_first_nonwhitespace", "extend_to_line_end"]
+"b"       = "buffer_picker"
+
+"Z"       = { "i" = "scroll_up", "k" = "scroll_down"}
+"z"       = { "n" = ["jump_view_right", "goto_next_buffer", "jump_view_left"], "p" = ["jump_view_left", "goto_previous_buffer", "jump_view_right"] }
+
+"A-z"     = ":toggle-option soft-wrap.enable"
+
+"w"       = "select_textobject_inner"
+"W"       = "select_textobject_around"
+"D"       = "expand_selection"
+
+"q"       = "collapse_selection"
+"h"       = "no_op"
+"t"       = "extend_till_char"
+"f"       = "extend_next_char"
+"T"       = "extend_till_prev_char"
+"F"       = "extend_prev_char"
+
+[keys.normal.space]
+"space" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-last-picker > /dev/null 2>&1 &"
+"/" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-content-picker > /dev/null 2>&1 &"
+"i" = ":sh python3 {{ .chezmoi.homeDir}}/.config/scripts/devdocs.py > /dev/null 2>&1 &"
+"s" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker --file %{buffer_name} > /dev/null 2>&1 &"
+"S" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker > /dev/null 2>&1 &"
+
+[keys.normal.g]
+t = "goto_file_start"
+b = "goto_last_line"
+
+d = ["collapse_selection", "expand_selection", "trim_selections",
+     ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --goto-definition --symbol %{selection} > /dev/null 2>&1 &"]
+
+r = ["collapse_selection", "expand_selection", "trim_selections",
+     ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --show-references --symbol %{selection} > /dev/null 2>&1 &"]
+
+i = "hover"
+H = "extend_to_line_start"
+
+[keys.normal.e]
+j = "jump_view_left"
+l = "jump_view_right"
+i = "jump_view_up"
+k = "jump_view_down"
+x = ":bc"
+X = "wclose"
+J = "swap_view_left"
+L = "swap_view_right"
+I = "swap_view_up"
+K = "swap_view_down"
+q = [":bc", "wclose"]
+t = "transpose_view"
+
+[keys.insert]
+"A-e"     = "normal_mode"
+j         = { k = ["normal_mode"] }
+
+"A-i"     = ["move_line_up"]
+"A-I"     = ["extend_line_up", "normal_mode"]
+"A-j"     = ["move_prev_word_start", "collapse_selection"]
+"A-J"     = ["move_prev_word_start", "normal_mode"]
+"A-k"     = ["move_line_down"]
+"A-K"     = ["extend_line_down", "normal_mode"]
+"A-l"     = ["move_next_word_start", "collapse_selection"]
+"A-L"     = ["move_next_word_start", "normal_mode"]
+"A-u"     = "move_char_left"
+"A-U"     = ["move_char_left", "normal_mode"]
+"A-o"     = "move_char_right"
+"A-O"     = ["move_char_right", "normal_mode"]
+"A-."     = "no_op"
+"A-n"     = "no_op"
+"A-p"     = "no_op"
+"A-,"     = ["goto_line_end", "move_char_right"]
+"A-;"     = ["goto_first_nonwhitespace"]
+"A-m"     = "no_op"
+"A-M"     = "no_op"
+"A-h"     = "no_op"
+"A-H"     = "no_op"
+
+C-z       = ["normal_mode", "undo"]
+C-y       = ["normal_mode", "redo"]
+C-v       = "paste_clipboard_before"
+C-S-v     = "paste_clipboard_after"
+C-c       = "yank_main_selection_to_clipboard"
+C-x       = ["yank_main_selection_to_clipboard", "delete_selection"]
+"C-space" = "completion"
+"C-k"     = "signature_help"
+
+"C-s"     = [":write", "normal_mode"]
+"tab"     = ["normal_mode", "indent"]
+"S-tab"   = ["normal_mode", "unindent"]
+"A-z"     = ["normal_mode", ":toggle-option soft-wrap.enable", "insert_mode"]
+"A-t"     = ["normal_mode", "smart_tab"]
+
+[keys.select]
+","         = "goto_line_end"
+";"         = "goto_first_nonwhitespace"
+"backspace" = ["delete_selection", "normal_mode"]
+esc         = ["normal_mode"]
+i           = "extend_line_up"
+k           = "extend_line_down"
+j           = "extend_prev_word_start"
+l           = "extend_next_word_start"
+u           = "extend_char_left"
+o           = "extend_char_right"
+"C-n"       = "search_next"
+"C-p"       = "search_prev"
+"tab"       = "indent"
+"S-tab"     = "unindent"
