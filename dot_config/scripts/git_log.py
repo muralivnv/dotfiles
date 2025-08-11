@@ -38,8 +38,8 @@ class BranchPage:
                                  f"--bind 'alt-K:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} force_delete_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-c:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} create_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
                                  f"--bind 'alt-f:execute-silent({TMUX_POPUP} git fetch --all)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} git pull --rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} git push)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} pull_rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} push_changes)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-s:become(python3 {COMMIT_SCRIPT})' "\
                                  f"--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
@@ -84,7 +84,7 @@ class LogPage:
                                   f"--bind 'alt-a:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} cherry_pick_no_commit {{}})' "\
                                   "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
                                   f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
-                                  f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
+                                  f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches --all | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                   "--bind=tab:down,shift-tab:up "
 
         self._last_selected_line: int = 0

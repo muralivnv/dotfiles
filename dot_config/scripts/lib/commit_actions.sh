@@ -41,6 +41,9 @@ cherry_pick_no_commit() {
 
 commit_changes() {
   local subject=$(gum input --width=100 --char-limit=80 --header="Commit Subject" --header.foreground="#00ff00")
+  if [[ -z "${subject//[[:space:]]/}" ]]; then
+    return
+  fi
   local description=$(gum write --width=100 --height=15 --show-cursor-line --show-line-numbers --char-limit=80 --header="Commit Message" --header.foreground="#00ff00")
   gum confirm "Commit changes?" --no-show-help && git commit -m "$subject" -m "$description"
 }
