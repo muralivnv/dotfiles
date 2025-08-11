@@ -45,6 +45,10 @@ commit_changes() {
   gum confirm "Commit changes?" --no-show-help && git commit -m "$subject" -m "$description"
 }
 
+push_changes() {
+  git push 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # Called directly, dispatch first argument as function
   cmd="$1"
