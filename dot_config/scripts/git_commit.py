@@ -5,7 +5,8 @@ FZF_ESC_RET_CODE = 130
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
 LOG_SCRIPT = os.path.join(SCRIPT_DIR, "git_log.py")
-STATUS_PARSER_AWK_SCRIPT = os.path.join(SCRIPT_DIR, "git_status_enhanced.awk")
+STATUS_PARSER_AWK_SCRIPT = os.path.join(SCRIPT_DIR, "lib/git_status_enhanced.awk")
+COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.sh")
 
 GIT_STATUS_COMMAND = f"git status --porcelain | awk -f {STATUS_PARSER_AWK_SCRIPT}"
 PREFIX_EXTRACTION = "$(echo {} | cut -c1) "
@@ -31,6 +32,7 @@ PATCH_COMMAND = (
     "?) git add --intent-to-add \"$file\" && git add -p \"$file\" ;; "
     "esac"
 )
+TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -E "
 
 class StatusPage:
     def __init__(self):
@@ -45,9 +47,7 @@ class StatusPage:
             f"--bind 'alt-K:execute-silent(rm -rf {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-p:execute({PATCH_COMMAND})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-e:execute($EDITOR {FILE_EXTRACTION})' "
-            "--bind 'alt-c:execute(SUMMARY=$(gum input --width=100 --char-limit=80 --header=\"Commit Subject\" --header.foreground=\"#00ff00\");" \
-            "DESCRIPTION=$(gum write --width=100 --height=15 --show-cursor-line --show-line-numbers --char-limit=80 --header=\"Commit Message\" --header.foreground=\"#00ff00\"); "\
-            f"gum confirm \"Commit changes?\" && git commit -m \"$SUMMARY\" -m \"$DESCRIPTION\")+reload-sync({GIT_STATUS_COMMAND})' "\
+            f"--bind 'alt-c:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} commit_changes {{}})+reload-sync({GIT_STATUS_COMMAND})' "\
             f"--bind 'alt-l:become(python3 {LOG_SCRIPT})' "\
             "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
             "--bind=tab:down,shift-tab:up "\

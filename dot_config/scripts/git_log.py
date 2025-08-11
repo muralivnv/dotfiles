@@ -5,18 +5,18 @@ import os
 
 DELIMITER               = "@"
 FZF_ESC_RET_CODE        = 130
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
 COMMIT_SCRIPT = os.path.join(SCRIPT_DIR, "git_commit.py")
-GIT_BRANCH_SCRIPT = os.path.join(SCRIPT_DIR, "git_branch_enhanced.sh")
-
-GIT_BRANCH_BASE_COMMAND = f"bash {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
-GIT_LOG_BASE_COMMAND    = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
-CAPTURE_AND_SHOW_ERROR  = f"1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt"
-CREATE_BRANCH_PARENT_PROMPT = "gum input --header.foreground=\"#00ff00\" --header=\"Create branch from\" --no-show-help"
-CREATE_BRANCH_NAME_PROMPT = "gum input --header.foreground=\"#00ff00\" --header=\"Branch name\" --no-show-help"
+GIT_BRANCH_SCRIPT = os.path.join(SCRIPT_DIR, "lib/git_branch_enhanced.sh")
+BRANCH_ACTIONS = os.path.join(SCRIPT_DIR, "lib/branch_actions.sh")
+COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.sh")
 BRANCH_EXTRACT_COMMAND = "purl -extract \"#^\d+@([A-Za-z0-9._\/-]+)#\$1#\""
 COMMIT_EXTRACT_COMMAND = "purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\""
+GIT_BRANCH_BASE_COMMAND = f"bash {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
+GIT_LOG_BASE_COMMAND = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
+TMUX_POPUP = "tmux display-popup -w 40% -h 40% -d \"$(git rev-parse --show-toplevel)\" -E "
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)
@@ -32,23 +32,13 @@ class BranchPage:
         self._vis_command: str = f" | " \
                                  f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} " \
                                  f"$(echo {{}} | {BRANCH_EXTRACT_COMMAND}) ' --preview-window=bottom:70% " \
-                                 "--bind 'alt-b:execute(" \
-                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
-                                                   f"gum confirm \"Checkout >>>> $BR <<<< ?\" --no-show-help && $(git switch \"$BR\" {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 "--bind 'alt-k:execute(" \
-                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
-                                                   f"gum confirm \"Delete branch >>>> $BR? <<<< \" --no-show-help && $(git branch -d \"$BR\" {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 "--bind 'alt-K:execute(" \
-                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
-                                                   f"gum confirm \"Force Delete branch >>>> $BR? <<<< \" --no-show-help && $(git branch -D \"$BR\" {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 "--bind 'alt-c:execute(" \
-                                                   f"BR=$(echo {{}} | {BRANCH_EXTRACT_COMMAND} | sed \"s#^origin/##\"); " \
-                                                   f"PARENT=$({CREATE_BRANCH_PARENT_PROMPT} --value $BR) && "\
-                                                   f"CHILD=$({CREATE_BRANCH_NAME_PROMPT}) && "\
-                                                   f"$(git branch $CHILD $PARENT {CAPTURE_AND_SHOW_ERROR}))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-f:execute(git fetch --all)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-F:execute(git pull --rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-P:execute(git push)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-b:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} checkout_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
+                                 f"--bind 'alt-k:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} delete_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
+                                 f"--bind 'alt-K:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} force_delete_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-c:execute-silent({TMUX_POPUP} bash {BRANCH_ACTIONS} create_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
+                                 f"--bind 'alt-f:execute-silent(git fetch --all)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} git pull --rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} git push)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-s:become(python3 {COMMIT_SCRIPT})' "\
                                  "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
@@ -86,21 +76,11 @@ class LogPage:
                                   f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "\
                                   f"--preview 'echo {{}} | {COMMIT_EXTRACT_COMMAND} | xargs git show | bat --color=always --language=Diff ' "\
                                   "--preview-window=bottom:70% "\
-                                  "--bind 'alt-b:execute("\
-                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); "\
-                                                  f"gum confirm \"Checkout >>>> $COMMIT <<<< ?\" --no-show-help && $(git checkout \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
-                                  "--bind 'alt-x:execute("\
-                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); BR=$(git branch --show-current); "\
-                                                  f"gum confirm \"Soft reset $BR to >>> $COMMIT <<<< ?\" --no-show-help && $(git reset --soft \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
-                                  "--bind 'alt-X:execute("\
-                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); BR=$(git branch --show-current); "\
-                                                  f"gum confirm \"Hard reset $BR to >>> $COMMIT <<<< ?\" --no-show-help && $(git reset --hard \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
-                                  "--bind 'alt-A:execute("\
-                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); "\
-                                                  f"gum confirm \"Cherry-pick >>> $COMMIT <<<< ?\" --no-show-help && $(git cherry-pick \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
-                                  "--bind 'alt-a:execute("\
-                                                  f"COMMIT=$(echo {{}} | {COMMIT_EXTRACT_COMMAND}); "\
-                                                  f"gum confirm \"Apply changes from >>> $COMMIT <<<< ?\" --no-show-help && $(git cherry-pick --no-commit \"$COMMIT\" {CAPTURE_AND_SHOW_ERROR}) )' "\
+                                  f"--bind 'alt-b:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} checkout_commit {{}})' "\
+                                  f"--bind 'alt-x:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} soft_reset_to_commit {{}})' "\
+                                  f"--bind 'alt-X:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} hard_reset_to_commit {{}})' "\
+                                  f"--bind 'alt-A:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} cherry_pick {{}})' "\
+                                  f"--bind 'alt-a:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} cherry_pick_no_commit {{}})' "\
                                   "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
                                   f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                   f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
