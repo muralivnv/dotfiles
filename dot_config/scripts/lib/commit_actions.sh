@@ -13,16 +13,16 @@ soft_reset_to_commit() {
   local commit
   commit=$(extract_commit_hash "$1")
   local branch=$(git branch --show-current)
-  gum confirm "Soft reset $branch to >>>> $commit ? <<<< " --no-show-help && \
-    (git reset --soft "$commit" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  local target=$(gum input --header.foreground="#00ff00" --header="Soft reset $branch to" --no-show-help --value="$commit")
+  test $target && (git reset --soft "$target" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
 }
 
 hard_reset_to_commit() {
   local commit
   commit=$(extract_commit_hash "$1")
   local branch=$(git branch --show-current)
-  gum confirm "Hard reset $branch to >>>> $commit ? <<<< " --no-show-help && \
-    (git reset --hard "$commit" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  local target=$(gum input --header.foreground="#00ff00" --header="Hard reset $branch to" --no-show-help --value="$commit")
+  test $target && (git reset --hard "$target" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
 }
 
 cherry_pick() {
@@ -42,7 +42,7 @@ cherry_pick_no_commit() {
 commit_changes() {
   local subject=$(gum input --width=100 --char-limit=80 --header="Commit Subject" --header.foreground="#00ff00")
   local description=$(gum write --width=100 --height=15 --show-cursor-line --show-line-numbers --char-limit=80 --header="Commit Message" --header.foreground="#00ff00")
-  gum confirm "Commit changes?" && git commit -m "$summary" -m "$description"
+  gum confirm "Commit changes?" --no-show-help && git commit -m "$subject" -m "$description"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

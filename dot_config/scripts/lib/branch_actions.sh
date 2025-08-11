@@ -5,8 +5,15 @@ extract_branch() {
 checkout_branch() {
   local branch
   branch=$(extract_branch "$1")
-  gum confirm "Checkout >>>> $branch <<<< ?" --no-show-help && \
-    (git switch "$branch" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  local target=$(gum input --header.foreground="#00ff00" --header="Checkout branch" --no-show-help --value="$branch")
+  test $target && (git switch "$branch" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+}
+
+reset_branch() {
+  local branch
+  branch=$(extract_branch "$1")
+  local target=$(gum input --header.foreground="#00ff00" --header="Reset branch to " --no-show-help --value="$branch")
+  test $target && (git reset --hard "$branch" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
 }
 
 delete_branch() {
@@ -26,9 +33,9 @@ force_delete_branch() {
 create_branch() {
   local branch parent child
   branch=$(extract_branch "$1")
-  parent=$(gum input --header.foreground="#00ff00" --header="Create branch from" --no-show-help)
+  parent=$(gum input --header.foreground="#00ff00" --header="Create branch from" --no-show-help --value="$branch")
   child=$(gum input --header.foreground="#00ff00" --header="Branch name" --no-show-help)
-  git branch "$child" "$parent" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt
+  test $parent && test $child && (git branch "$child" "$parent" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
 }
 
 pull_rebase() {

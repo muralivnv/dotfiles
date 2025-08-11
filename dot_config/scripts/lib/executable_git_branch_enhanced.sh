@@ -9,13 +9,14 @@ C_BOLD_PURPLE="\033[1;35m"
 C_RESET="\033[0m"
 
 current_branch=$(git symbolic-ref --quiet --short HEAD)
-local_branches=$(git for-each-ref --count=50 --format='%(refname) %(refname:short) %(upstream:short) %(committerdate:unix) %(objectname:short) %(authorname) %(contents:subject)' refs/heads)
+local_branches=$(git for-each-ref --count=50 --format='%(refname)|%(refname:short)|%(upstream:short)|%(committerdate:unix)|%(objectname:short)|%(authorname)|%(contents:subject)' refs/heads)
 remote_branches=$(git for-each-ref --count=50 --format='%(refname) %(refname:short) %(committerdate:unix) %(authorname) %(contents:subject)' refs/remotes)
 
 tmpfile=$(mktemp)
 
-while read -r full_ref local_branch upstream unixdate commit_hash author subject; do
+while IFS='|' read -r full_ref local_branch upstream unixdate commit_hash author subject; do
   if [ -z "$upstream" ]; then
+    upstream=">>> NO-REMOTE <<<"
     ahead=0
     behind=0
   else

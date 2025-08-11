@@ -49,7 +49,7 @@ class StatusPage:
             f"--bind 'alt-e:execute($EDITOR {FILE_EXTRACTION})' "
             f"--bind 'alt-c:execute-silent({TMUX_POPUP} bash {COMMIT_ACTIONS} commit_changes {{}})+reload-sync({GIT_STATUS_COMMAND})' "\
             f"--bind 'alt-l:become(python3 {LOG_SCRIPT})' "\
-            "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
+            f"--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))+reload-sync({GIT_STATUS_COMMAND})' "\
             "--bind=tab:down,shift-tab:up "\
             f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "
         )
