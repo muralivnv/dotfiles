@@ -27,4 +27,5 @@ alias gc="python3 $HOME/.config/scripts/git_commit.py"
 alias gf="git fetch --all"
 alias gp="git pull --rebase"
 alias gP="git push"
+alias gPf="git push --force-with-lease"
 export EDITOR=hx
