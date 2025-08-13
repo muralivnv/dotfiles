@@ -20,27 +20,30 @@ while IFS='|' read -r full_ref local_branch upstream unixdate commit_hash author
     ahead=0
     behind=0
   else
-    counts=$(git rev-list --left-right --count "$local_branch...$upstream")
+    counts=$(git rev-list --left-right --count "$local_branch...$upstream" 2>/dev/null || echo "0	0")
     ahead=$(echo "$counts" | cut -f1)
     behind=$(echo "$counts" | cut -f2)
   fi
 
+  priority=1
   prefix=""
   if [[ "$local_branch" == "$current_branch" ]]; then
     prefix="${C_BOLD_RED}"
+    priority=0
   fi
 
-  echo -e "$unixdate\tlocal\t$prefix$local_branch\t$upstream\t$ahead\t$behind\t$author\t$subject" >> "$tmpfile"
+  echo -e "${priority}\t${unixdate}\tlocal\t${prefix}${local_branch}${C_RESET}\t${upstream}\t${ahead}\t${behind}\t${author}\t${subject}" >> "$tmpfile"
 done <<< "$local_branches"
 
 while read -r full_ref remote_branch unixdate author subject; do
   tracked=$(git for-each-ref --format='%(upstream:short)' refs/heads | grep -Fx "$remote_branch" || true)
   if [ -z "$tracked" ]; then
-    echo -e "$unixdate\tremote\t$remote_branch\t-\t-\t-\t$author\t$subject" >> "$tmpfile"
+    # remote branches get priority 2 (after local)
+    echo -e "2\t${unixdate}\tremote\t${remote_branch}\t-\t-\t-\t${author}\t${subject}" >> "$tmpfile"
   fi
 done <<< "$remote_branches"
 
-sort -k1,1nr "$tmpfile" | while IFS=$'\t' read -r unixdate type branch upstream ahead behind author subject; do
+sort -k1,1n -k2,2nr "$tmpfile" | while IFS=$'\t' read -r priority unixdate type branch upstream ahead behind author subject; do
   date_str=$(date -d "@$unixdate" '+%Y-%m-%d %H:%M')
 
   if [ "$type" = "local" ]; then
