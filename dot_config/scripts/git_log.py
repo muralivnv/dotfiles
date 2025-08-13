@@ -16,7 +16,7 @@ BRANCH_EXTRACT_COMMAND = "purl -extract \"#^\d+@([A-Za-z0-9._\/-]+)#\$1#\""
 COMMIT_EXTRACT_COMMAND = "purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\""
 GIT_BRANCH_BASE_COMMAND = f"bash {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
 GIT_LOG_BASE_COMMAND = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
-TMUX_POPUP = "tmux display-popup -w 40% -h 40% -d \"$(git rev-parse --show-toplevel)\" -E "
+TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -E "
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)

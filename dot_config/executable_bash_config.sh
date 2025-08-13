@@ -29,3 +29,4 @@ alias gp="git pull --rebase"
 alias gP="git push"
 alias gPf="git push --force-with-lease"
 export EDITOR=hx
+export GIT_EDITOR=hx

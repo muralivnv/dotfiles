@@ -2,54 +2,78 @@ extract_commit_hash() {
   echo "$1" | purl -extract '#\*\s+([a-z0-9]{4,})#$1#'
 }
 
+run_editable_command() {
+  local initial_cmd="$1"
+  local user_cmd
+  if read -e -i "$initial_cmd" -p "" user_cmd; then
+    if ! eval "$user_cmd"; then
+      echo
+      read -r || true
+    fi
+  else
+    return 1
+  fi
+}
+
 checkout_commit() {
   local commit
   commit=$(extract_commit_hash "$1")
-  gum confirm "Checkout >>>> $commit <<<< ?" --no-show-help && \
-    (git checkout "$commit" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  run_editable_command "git checkout \"$commit\" "
 }
 
 soft_reset_to_commit() {
   local commit
   commit=$(extract_commit_hash "$1")
-  local branch=$(git branch --show-current)
-  local target=$(gum input --header.foreground="#00ff00" --header="Soft reset $branch to" --no-show-help --value="$commit")
-  test $target && (git reset --soft "$target" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  run_editable_command "git reset --soft \"$commit\" "
 }
 
 hard_reset_to_commit() {
   local commit
   commit=$(extract_commit_hash "$1")
-  local branch=$(git branch --show-current)
-  local target=$(gum input --header.foreground="#00ff00" --header="Hard reset $branch to" --no-show-help --value="$commit")
-  test $target && (git reset --hard "$target" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  run_editable_command "git reset --hard \"$commit\" "
 }
 
 cherry_pick() {
   local commit
   commit=$(extract_commit_hash "$1")
-  gum confirm "Cherry-pick >>>> $commit ? <<<< " --no-show-help && \
-  (git cherry-pick "$commit" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  run_editable_command "git cherry-pick \"$commit\" "
 }
 
 cherry_pick_no_commit() {
   local commit
   commit=$(extract_commit_hash "$1")
-  gum confirm "Apply changes from >>>> $commit ? <<<< " --no-show-help && \
-  (git cherry-pick --no-commit "$commit" 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt)
+  run_editable_command "git cherry-pick --no-commit \"$commit\" "
 }
 
 commit_changes() {
-  local subject=$(gum input --width=100 --char-limit=80 --header="Commit Subject" --header.foreground="#00ff00")
-  if [[ -z "${subject//[[:space:]]/}" ]]; then
-    return
+  local tmpfile msgfile
+  tmpfile=$(mktemp --suffix=.diff)
+  msgfile="$tmpfile.msg"
+  trap 'rm -f "$tmpfile" "$msgfile"' RETURN
+
+  cat >"$tmpfile" <<-EOF
+		>>> COMMIT_MESSAGE
+
+		<<< COMMIT_MESSAGE
+		<<<DIFF>>>
+	EOF
+  git diff --staged >> "$tmpfile"
+
+  "$EDITOR" "$tmpfile"
+  local msgfile="$tmpfile.msg"
+
+  sed '/<<<DIFF>>>/,$d' "$tmpfile" | purl -exclude '^[<>]{3}\sCOMMIT_MESSAGE' > "$msgfile"
+
+  if purl -exclude '^\n$' "$msgfile" | purl -fail -filter '[a-zA-Z0-9]{1}' > /dev/null; then
+    git commit -F "$msgfile"
+    rm "$tmpfile" "$msgfile"
+  else
+    echo "Empty commit message -- aborting"
   fi
-  local description=$(gum write --width=100 --height=15 --show-cursor-line --show-line-numbers --char-limit=80 --header="Commit Message" --header.foreground="#00ff00")
-  gum confirm "Commit changes?" --no-show-help && git commit -m "$subject" -m "$description"
 }
 
 push_changes() {
-  git push 1> /tmp/tmp.txt 2>&1 || less /tmp/tmp.txt
+  run_editable_command "git push "
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
