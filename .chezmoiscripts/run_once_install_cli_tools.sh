@@ -53,14 +53,6 @@ install_tool "bat" "0.25.0" \
   "bat-v0.25.0-x86_64-unknown-linux-musl.tar.gz" \
   "bat-v0.25.0-x86_64-unknown-linux-musl/bat"
 
-# gum
-install_tool "gum" "v0.16.2" \
-  "gum --version" \
-  "awk '{print \$3}'" \
-  "https://github.com/charmbracelet/gum/releases/download/v0.16.2/gum_0.16.2_Linux_x86_64.tar.gz" \
-  "gum_0.16.2_Linux_x86_64.tar.gz" \
-  "gum"
-
 # purl
 install_tool "purl" "v0.2.1" \
   "purl --version" \
