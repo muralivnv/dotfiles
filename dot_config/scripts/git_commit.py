@@ -42,7 +42,7 @@ class StatusPage:
             f"--bind 'alt-S:execute-silent(git add -u)+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-u:execute-silent(git restore --staged {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})+down' "
             f"--bind 'alt-U:execute-silent(git restore --staged .)+reload-sync({GIT_STATUS_COMMAND})' "
-            f"--bind 'alt-k:execute-silent(git checkout HEAD {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})' "
+            f"--bind 'alt-k:execute-silent(git restore {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-K:execute-silent(rm -rf {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-p:execute({PATCH_COMMAND})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-g:reload-sync({GIT_STATUS_COMMAND})' "
