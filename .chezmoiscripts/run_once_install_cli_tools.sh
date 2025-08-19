@@ -76,3 +76,11 @@ install_tool "starship" "1.23.0" \
   "https://github.com/starship/starship/releases/download/v1.23.0/starship-x86_64-unknown-linux-musl.tar.gz" \
   "starship-x86_64-unknown-linux-musl.tar.gz" \
   "starship"
+
+# pastel
+install_tool "pastel" "0.10.0" \
+  "pastel --version" \
+  "cut -d' ' -f2" \
+  "https://github.com/sharkdp/pastel/releases/download/v0.10.0/pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
+  "pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
+  "pastel-v0.10.0-x86_64-unknown-linux-musl/pastel"
