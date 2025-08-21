@@ -21,19 +21,19 @@ def main():
 
     local_branches = run_git(
         "git for-each-ref --count=50 "
-        "--format='%(refname)|%(refname:short)|%(upstream:short)|%(committerdate:unix)|%(objectname:short)|%(authorname)|%(contents:subject)' refs/heads"
+        "--format='%(refname)<|>%(refname:short)<|>%(upstream:short)<|>%(committerdate:unix)<|>%(objectname:short)<|>%(authorname)<|>%(contents:subject)' refs/heads"
     )
 
     remote_branches = run_git(
         "git for-each-ref --count=50 "
-        "--format='%(refname) %(refname:short) %(committerdate:unix) %(authorname) %(contents:subject)' refs/remotes"
+        "--format='%(refname)<|>%(refname:short)<|>%(committerdate:unix)<|>%(authorname)<|>%(contents:subject)' refs/remotes"
     )
 
     rows = []
 
     # Local branches
     for line in local_branches.splitlines():
-        parts = line.strip("'").split("|")
+        parts = line.strip("'").split("<|>")
         if len(parts) < 7:
             continue
         _, local_branch, upstream, unixdate, _, author, subject = parts
@@ -64,7 +64,7 @@ def main():
     # Remote branches
     tracked = set(run_git("git for-each-ref --format='%(upstream:short)' refs/heads").splitlines())
     for line in remote_branches.splitlines():
-        parts = line.split(" ", 4)
+        parts = line.split("<|>")
         if len(parts) < 5:
             continue
         _, remote_branch, unixdate, author, subject = parts
