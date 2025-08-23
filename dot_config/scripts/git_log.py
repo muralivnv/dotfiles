@@ -16,7 +16,7 @@ BRANCH_EXTRACT_COMMAND = "purl -extract \"#^\d+@([A-Za-z0-9._\/-]+)#\$1#\""
 COMMIT_EXTRACT_COMMAND = "purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\""
 GIT_BRANCH_BASE_COMMAND = f"python3 {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
 GIT_LOG_BASE_COMMAND = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
-TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -E "
+TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -DE "
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)
@@ -41,7 +41,7 @@ class BranchPage:
                                  f"--bind 'alt-F:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} pull_rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-q:become(python3 {COMMIT_SCRIPT})' "\
-                                 f"--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-t:execute-silent({TMUX_POPUP})+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                  "--bind=tab:down,shift-tab:up "
         self._last_selected_line: int = 0
@@ -82,7 +82,7 @@ class LogPage:
                                   f"--bind 'alt-X:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} hard_reset_to_commit {{}})' "\
                                   f"--bind 'alt-A:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} cherry_pick {{}})' "\
                                   f"--bind 'alt-a:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} cherry_pick_no_commit {{}})' "\
-                                  "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
+                                  f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
                                   f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                   f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches --all | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                   "--bind=tab:down,shift-tab:up "
@@ -131,7 +131,7 @@ class DiffPage:
             vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' " + \
                       f"--preview 'git show --format= {commit_hash} {{2}} | bat --color=always --language=Diff' "\
                       f"--header-label 'Info' --bind 'focus:+bg-transform-header:git show {commit_hash} -s' "\
-                      "--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))' "\
+                      f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
                       f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                       "--bind=tab:down,shift-tab:up "
 

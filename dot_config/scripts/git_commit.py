@@ -7,7 +7,7 @@ REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
 LOG_SCRIPT = os.path.join(SCRIPT_DIR, "git_log.py")
 STATUS_SCRIPT = os.path.join(SCRIPT_DIR, "lib/git_status.py")
 COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
-TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -E "
+TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -DE "
 GIT_STATUS_COMMAND = f"python3 {STATUS_SCRIPT}"
 PREFIX_EXTRACTION = "$(echo {} | cut -c1) "
 FILE_EXTRACTION = "$(echo {} | cut -c3-) "
@@ -50,7 +50,7 @@ class StatusPage:
             f"--bind 'alt-c:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} commit_changes)+reload-sync({GIT_STATUS_COMMAND})' "\
             f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)+reload-sync({GIT_STATUS_COMMAND})' "\
             f"--bind 'alt-l:become(python3 {LOG_SCRIPT})' "\
-            f"--bind 'alt-t:execute-silent(tmux popup -w 60% -h 60% -d $(git rev-parse --show-toplevel))+reload-sync({GIT_STATUS_COMMAND})' "\
+            f"--bind 'alt-t:execute-silent({TMUX_POPUP})+reload-sync({GIT_STATUS_COMMAND})' "\
              "--bind=tab:down,shift-tab:up "\
             f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "
         )
