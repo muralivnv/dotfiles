@@ -47,10 +47,10 @@ class StatusPage:
             f"--bind 'alt-p:execute({PATCH_COMMAND})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-g:reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-e:execute($EDITOR {FILE_EXTRACTION})' "
-            f"--bind 'alt-c:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} commit_changes)+reload-sync({GIT_STATUS_COMMAND})' "\
-            f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)+reload-sync({GIT_STATUS_COMMAND})' "\
+            f"--bind 'alt-c:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} commit_changes)' "\
+            f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)' "\
             f"--bind 'alt-l:become(python3 {LOG_SCRIPT})' "\
-            f"--bind 'alt-t:execute-silent({TMUX_POPUP})+reload-sync({GIT_STATUS_COMMAND})' "\
+            f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
              "--bind=tab:down,shift-tab:up "\
             f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "
         )

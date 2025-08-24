@@ -32,16 +32,17 @@ class BranchPage:
         self._vis_command: str = f" | " \
                                  f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} " \
                                  f"$(echo {{}} | {BRANCH_EXTRACT_COMMAND}) ' --preview-window=bottom:70% " \
-                                 f"--bind 'alt-b:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} checkout_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
-                                 f"--bind 'alt-x:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} reset_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-k:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} delete_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
-                                 f"--bind 'alt-K:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} force_delete_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-c:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} create_branch {{}})+reload-sync({GIT_BRANCH_BASE_COMMAND})' " \
-                                 f"--bind 'alt-f:execute-silent({TMUX_POPUP} git fetch --all)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} pull_rebase)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-b:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} checkout_branch {{}})' " \
+                                 f"--bind 'alt-x:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} reset_branch {{}})' "\
+                                 f"--bind 'alt-k:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} delete_branch {{}})' " \
+                                 f"--bind 'alt-K:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} force_delete_branch {{}})' "\
+                                 f"--bind 'alt-c:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} create_branch {{}})' " \
+                                 f"--bind 'alt-f:execute-silent({TMUX_POPUP} git fetch --all)' "\
+                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} pull_rebase)' "\
+                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)' "\
+                                 f"--bind 'alt-g:reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
                                  f"--bind 'alt-q:become(python3 {COMMIT_SCRIPT})' "\
-                                 f"--bind 'alt-t:execute-silent({TMUX_POPUP})+reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
+                                 f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
                                  "--bind=tab:down,shift-tab:up "
         self._last_selected_line: int = 0
@@ -93,7 +94,9 @@ class LogPage:
         try:
             log_cmd = self._base_command +  branch
             vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' " +\
-                      f"--header 'Branch: {branch}' "
+                      f"--header 'Branch: {branch}' " + \
+                      f"--bind 'alt-g:reload-sync({log_cmd} | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Branch: {branch})' "
+                      
             output = subprocess.check_output(log_cmd + vis_cmd, shell=True, universal_newlines=True)
             selected_line = get_selected_line(output)
             if selected_line is not None:
