@@ -117,6 +117,7 @@ x         = "extend_line"
 "i" = ":sh python3 {{ .chezmoi.homeDir}}/.config/scripts/devdocs.py > /dev/null 2>&1 &"
 "s" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker --file %{buffer_name} > /dev/null 2>&1 &"
 "S" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker > /dev/null 2>&1 &"
+"D" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
 
 [keys.normal.g]
 t = "goto_file_start"
