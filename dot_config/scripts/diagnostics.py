@@ -2,66 +2,61 @@ import subprocess
 import os
 import sys
 from typing import Optional
+import socket
+from argparse import ArgumentParser
 
+FILE_FILTER_CMD_FILE = ".ronin/file-filter.txt"
 DIAGNOSTICS_CMD_FILE = ".ronin/diagnostics.txt"
 
 FZF_CMD = (
-    "fzf --tmux bottom,40% --border -i --preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
+    "fzf --border -i --preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
     "--delimiter @ --nth 1 --scrollbar '▍' --bind=tab:down,shift-tab:up --smart-case --cycle "
     "--style=full:line --layout=reverse --footer 'Error' --bind 'focus:+bg-transform-footer:echo {4} | fold -s -w 100' "
     "--color 'footer-border:#f4a560,footer-label:#ffa07a,footer:#ffa07a' "
 )
 
-def get_last_active_tmux_pane() -> Optional[str]:
-    try:
-        pane = subprocess.check_output(
-            ["tmux", "display-message", "-p", "#{pane_id}"],
-            universal_newlines=True
-        ).strip()
-        return pane
-    except subprocess.CalledProcessError:
-        return None
+WATCH_CMD = f"{{FILE_FILTER_CMD}} | entr -r curl -s -XPOST localhost:{{FZF_PROC_PORT}} -d 'reload(bash {DIAGNOSTICS_CMD_FILE})' "
+
+def get_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+def get_file_filter_cmd() -> Optional[str]:
+    filter = None
+    if os.path.exists(FILE_FILTER_CMD_FILE):
+        with open(FILE_FILTER_CMD_FILE, "r") as infile:
+            filter = infile.read().strip()
+    return filter
 
 if __name__ == "__main__":
+    args = ArgumentParser(description="Diagnostic list")
+    args.add_argument("--watch-files", action="store_true", dest="watch_files")
+    args.add_argument("--port", type=int, default=None, required=False, dest="port")
+    args.add_argument("--open-fzf", action="store_true", dest="open_fzf")
+    cli_args, _ = args.parse_known_args()
+
     if not os.path.exists(DIAGNOSTICS_CMD_FILE):
-        exit(1)
-    cmds = []
-    with open(DIAGNOSTICS_CMD_FILE, "r", encoding="utf8") as infile:
-        cmds_ = infile.readlines()
-        for cmd in cmds_:
-            cmd = cmd.strip()
-            if cmd != '':
-                cmds.append(cmd)
+        raise FileNotFoundError(f"File {DIAGNOSTICS_CMD_FILE} not found")
 
-    # initialize FZF process
-    pane_id = get_last_active_tmux_pane()
-    if pane_id is None:
-        pane_id = "{up-of}"
-    fzf_cmd = FZF_CMD + \
-        f" --bind \"ctrl-e:execute-silent(tmux send-keys -t '{pane_id}' ':open {{1}}:{{2}}:{{3}}' Enter)\" "
-    fzf_proc = subprocess.Popen(fzf_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, text=True)
+    free_port = cli_args.port
+    if free_port is None:
+        free_port = get_free_port()
+    filter = get_file_filter_cmd()
+    if filter is None:
+        raise FileNotFoundError(f"file {FILE_FILTER_CMD_FILE} not found")
 
-    for cmd in cmds:
-        process = subprocess.Popen(
-            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    fzf_cmd = (
+                 FZF_CMD
+               + f" --listen {free_port}"
+               + " --bind \"ctrl-e:execute-silent(tmux send-keys -t '{up-of}' ':open {1}:{2}:{3}' Enter)\" "
+               + f"--query={free_port} "
+               )
+    watch_cmd = WATCH_CMD.format(FILE_FILTER_CMD=filter, FZF_PROC_PORT=free_port)
 
-        stdout = process.stdout
-        if stdout is None:
-            print("[ERROR] No stderr stream found — did the command fail to start?", file=sys.stderr)
-            continue
-
-        for line in stdout:
-            line = line.strip()
-            if not line:
-                continue
-            if fzf_proc.poll() is not None:
-                break
-            try:
-                if fzf_proc.stdin:
-                    fzf_proc.stdin.write(line + "\n")
-                    fzf_proc.stdin.flush()
-            except (BrokenPipeError, AttributeError):
-                break
-    if fzf_proc.stdin:
-        fzf_proc.stdin.close()
-    fzf_proc.wait()
+    if cli_args.open_fzf:
+        fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=os.getcwd())
+        fzf_proc.wait()
+    elif cli_args.watch_files:
+        watch_proc = subprocess.Popen(watch_cmd, shell=True, cwd=os.getcwd())
+        watch_proc.wait()

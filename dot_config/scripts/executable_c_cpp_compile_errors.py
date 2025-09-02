@@ -11,7 +11,7 @@ COMMAND = (
     "'map(select(.file | contains($project))) | .[].command | "
     "sub(\" -o [^ ]+\";\" -fsyntax-only -w -fdiagnostics-format=json\")' "
     "{BUILD_DIR_PLACEHOLDER}/compile_commands.json "
-    "| xargs -P 4 -I % sh -c '%'"
+    r" | sed 's/(/\\(/g; s/)/\\)/g' | parallel -j4 {{}} "
 )
 
 def run(build_dir: str, project: str) -> None:
