@@ -11,7 +11,6 @@ FILE_FILTER_CMD_FILE        = ".ronin/file-filter.txt"
 TREESITTER_TAGS_CONFIG_FILE = ".ronin/treesitter-tags.txt"
 LAST_PICKER_STATE_FILE      = ".ronin/last-picker-state.txt"
 
-PREPROCESS_CMD = "find . -type f -printf '%P\\n' | {FILTER}"
 PREVIEW_CMD    = "--preview 'bat {{1}} --highlight-line {{2}}' --preview-window 'right,+{{2}}+3/3,~3' "
 FZF_CMD        = f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} " \
                   "--delimiter '@' --scrollbar '▍' " \

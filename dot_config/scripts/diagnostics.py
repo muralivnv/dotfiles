@@ -15,7 +15,7 @@ FZF_CMD = (
     "--color 'footer-border:#f4a560,footer-label:#ffa07a,footer:#ffa07a' "
 )
 
-WATCH_CMD = f"{{FILE_FILTER_CMD}} | entr -r curl -s -XPOST localhost:{{FZF_PROC_PORT}} -d 'reload(bash {DIAGNOSTICS_CMD_FILE})' "
+WATCH_CMD = f"{{FILE_FILTER_CMD}} | entr -r curl -XPOST localhost:{{FZF_PROC_PORT}} -d 'reload(bash {DIAGNOSTICS_CMD_FILE})' "
 
 def get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -29,12 +29,24 @@ def get_file_filter_cmd() -> Optional[str]:
             filter = infile.read().strip()
     return filter
 
+def get_tmux_window_id() -> str:
+    try:
+        window_id = subprocess.check_output(
+            ["tmux", "display-message", "-p", "#{window_id}"],
+            text=True
+        ).strip()
+        return window_id
+    except subprocess.CalledProcessError:
+        raise RuntimeError("Failed to get current tmux window ID. Are you in a tmux session?")
+
 if __name__ == "__main__":
     args = ArgumentParser(description="Diagnostic list")
-    args.add_argument("--watch-files", action="store_true", dest="watch_files")
+    args.add_argument("--watch", action="store_true", dest="watch")
     args.add_argument("--port", type=int, default=None, required=False, dest="port")
-    args.add_argument("--open-fzf", action="store_true", dest="open_fzf")
+    args.add_argument("--open", action="store_true", dest="open")
     cli_args, _ = args.parse_known_args()
+
+    window_id = get_tmux_window_id()
 
     if not os.path.exists(DIAGNOSTICS_CMD_FILE):
         raise FileNotFoundError(f"File {DIAGNOSTICS_CMD_FILE} not found")
@@ -51,12 +63,22 @@ if __name__ == "__main__":
                + f" --listen {free_port}"
                + " --bind \"ctrl-e:execute-silent(tmux send-keys -t '{up-of}' ':open {1}:{2}:{3}' Enter)\" "
                + f"--query={free_port} "
+               + "--bind 'load:execute-silent( "
+                    f"win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d: -f1); "
+                    " if [ \"${FZF_TOTAL_COUNT}\" -gt 0 ]; then "
+                        f"tmux rename-window -t {window_id} \"${{win_name}}:  ${{FZF_TOTAL_COUNT}}  \"; "
+                        f"tmux set-window-option -t {window_id} window-status-current-style \"bg=yellow,fg=black\"; "
+                    " else "
+                        f"tmux rename-window -t {window_id} \"${{win_name}}\"; "
+                        f"tmux set-window-option -t {window_id} window-status-current-style \"bg=colour173,fg=black\"; "
+                    "fi"
+                ")' "
                )
     watch_cmd = WATCH_CMD.format(FILE_FILTER_CMD=filter, FZF_PROC_PORT=free_port)
 
-    if cli_args.open_fzf:
+    if cli_args.open:
         fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=os.getcwd())
         fzf_proc.wait()
-    elif cli_args.watch_files:
+    elif cli_args.watch:
         watch_proc = subprocess.Popen(watch_cmd, shell=True, cwd=os.getcwd())
         watch_proc.wait()
