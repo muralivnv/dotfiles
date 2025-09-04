@@ -3,21 +3,21 @@ import subprocess
 import sys
 import os
 from argparse import ArgumentParser
-from typing import List, Optional, TextIO
+from typing import List, Optional, TextIO, Dict, Any, Set, Tuple
 import json
 import re
-from dataclasses import dataclass
-from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from concurrent.futures import ProcessPoolExecutor, as_completed, ThreadPoolExecutor
 import hashlib
+import shlex
 
-ERRORS_CACHE_FOLDER = ".ronin/cpp_errors"
-HEADER_EXTENSIONS = {".h", ".hpp", ".hh", ".hxx"}
+ERRORS_CACHE_FOLDER = ".ronin/c_cpp_errors"
+ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.json")
 
 @dataclass
 class CompileCommand:
-    file: Path
-    command: str
+    file: str
+    command: List[str]
 
 def add_syntax_only_checks(cmd: str) -> str:
     return re.sub(r" -o [^ ]+", " -fsyntax-only -w -fdiagnostics-format=json", cmd)
@@ -29,134 +29,135 @@ def get_commands_of_interest(compile_commands_path: str, path_prefix: str) -> Li
     out = []
     for c in commands:
         if os.path.exists(c["file"]) and c["file"].startswith(path_prefix):
-            out.append(CompileCommand(file=Path(c["file"]), command=add_syntax_only_checks(c["command"])))
+            out.append(CompileCommand(file=c["file"],
+                                      command=shlex.split(add_syntax_only_checks(c["command"]))))
     return out
 
-def get_file_hash(file: Path) -> str:
-    path_bytes = str(file).encode()
+def get_file_hash(file: str) -> str:
+    path_bytes = file.encode()
     h = hashlib.new("sha1")
     h.update(path_bytes)
     return h.hexdigest()
 
-def get_file_content_hash(file: Path) -> str:
-    h = hashlib.new("sha1")
-    with file.open("rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-def execute_cmd(cmd: CompileCommand, cache_file: str, content_hash: str) -> List[str]:
-    errors = []
-    process = subprocess.Popen(
-        cmd.command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1
-    )
-
-    stderr = process.stderr
-    if stderr is None:
-        print("No stderr stream found — did the command fail to start?", file=sys.stderr)
-        return
-
-    with open(cache_file, "w", encoding="utf8") as outfile:
-        outfile.write(content_hash + "\n")
-        while True:
-            line = stderr.readline()
-            if not line:
-                # process ended, but wait to ensure it's fully done
-                if process.poll() is not None:
-                    break
-                continue
-
-            line = line.strip()
-            if not line:
-                continue
-
-            try:
-                parsed = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            diagnostics = parsed if isinstance(parsed, list) else [parsed]
-
-            for diag in diagnostics:
-                if diag.get("kind") != "error":
-                    continue
-
-                for loc in diag.get("locations", []):
-                    caret = loc.get("caret") or loc.get("finish") or {}
-                    file = caret.get("file", "<unknown>")
-                    line_num = caret.get("line", 0)
-                    col_num = caret.get("column", 0)
-                    message = diag.get("message", "").replace("\n", " ")
-                    formatted = f"{file}@{line_num}@{col_num}@{message}\n"
-                    errors.append(formatted)
-                    outfile.write(formatted)
-        process.wait()
-    return errors
-
-def cat(cache_file: str) -> List[str]:
+def print_cache(cmd: CompileCommand) -> List[str]:
+    file_hash = get_file_hash(cmd.file)
+    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{file_hash}.errors")
+    if not os.path.exists(cache_file):
+        return []
     errors = []
     with open(cache_file, "r", encoding="utf8") as infile:
         errors = infile.readlines()
-    return errors[1:]
+    return errors
 
-def process(cmd: CompileCommand, force_run: bool = False) -> List[str]:
+def run_cmd(cmd: CompileCommand) -> List[str]:
     file_hash = get_file_hash(cmd.file)
     cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{file_hash}.errors")
-    file_content_hash = get_file_content_hash(cmd.file)
+    process = subprocess.Popen(cmd.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    _, stderr_data = process.communicate()
 
-    run_cmd = force_run
-    if (not run_cmd) and os.path.exists(cache_file):
-        # check whether file contents have changed since last time
-        # first line contains file content hash
-        last_content_hash = ""
-        with open(cache_file, "r", encoding="utf8") as infile:
-            last_content_hash = infile.readline().strip()
-        if last_content_hash != file_content_hash:
-            run_cmd = True
+    with open(cache_file, "w", encoding="utf8") as outfile:
+        if not stderr_data:
+            outfile.write("")
+            return []
+        try:
+            diagnostics = json.loads(stderr_data)
+        except json.JSONDecodeError:
+            outfile.write("")
+            return []
+        diagnostics = diagnostics if isinstance(diagnostics, list) else [diagnostics]
+        errors = []
+        for diag in diagnostics:
+            if diag.get("kind") != "error": continue
+            for loc in diag.get("locations", []):
+                caret = loc.get("caret", {})
+                file = caret.get("file", "<unknown>")
+                if not file or not str(cmd.file).endswith(file): continue
+                line_num = caret.get("line", 0)
+                col_num = caret.get("column", 0)
+                message = diag.get("message", "").replace("\n", " ")
+                error = f"{file}@{line_num}@{col_num}@{message}\n"
+                outfile.write(error)
+                errors.append(error)
+        return errors
+
+def get_cmd_dep(cmd: CompileCommand, path_prefix: str) -> List[str]:
+    try:
+        process = subprocess.run(cmd.command + ["-MM"], capture_output=True, text=True, check=True)
+        output = process.stdout.replace("\\\n", "")
+        deps = shlex.split(output)
+        filtered_deps = []
+        for d in deps[2:]:
+            if os.path.exists(d) and d.startswith(path_prefix):
+                filtered_deps.append(d)
+        return filtered_deps
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+def parse_dependencies(cmds: List[CompileCommand], path_prefix: str,
+                       executor: ProcessPoolExecutor) -> Tuple[List[List[str]], Set[str]]:
+    unique_headers = set()
+    cmds_dep = [[] for _ in range(len(cmds))]
+
+    futures = {executor.submit(get_cmd_dep, cmd, path_prefix): cmd for cmd in cmds}
+    order = {c.file: i for c, i in zip(cmds, range(len(cmds)))}
+
+    for i, future in enumerate(as_completed(futures)):
+        cmd = futures[future]
+        idx = order[cmd.file]
+        try:
+            cmds_dep[idx] = future.result()
+            unique_headers.update(cmds_dep[idx])
+        except Exception as e:
+            print(f"[ERROR] {e}", file=sys.stderr)
+    return cmds_dep, unique_headers
+
+def load_or_initialize_state() -> Dict[str, Any]:
+    if os.path.exists(ERRORS_STATE_FILE):
+        with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
+            return json.load(infile)
     else:
-        run_cmd = True
+        state = {}
+        state["targets"] = {}
+        state["deps"] = {}
+        return state
 
-    if run_cmd:
-        return execute_cmd(cmd, cache_file, file_content_hash)
-    else:
-        return cat(cache_file)
+def get_changed_header_list(headers: Set[str], state: Dict[str, Any]) -> Set[str]:
+    out = []
+    for h in headers:
+        m_time = str(os.path.getmtime(h))
+        if h in state["deps"]:
+            if m_time != state["deps"][h]:
+               out.append(h)
+        else:
+            out.append(h)
+    return set(out)
 
-def update_header_file_mtimes(path_prefix: str) -> bool:
-    any_changed = False
-    for root, dirs, files in os.walk(path_prefix):
-        # modify dirs in-place to skip unwanted directories
-        dirs[:] = [
-            d for d in dirs
-            if not (d.startswith("build") or d.startswith("."))
-        ]
+def split_commands(cmds: List[CompileCommand], cmds_dep: List[List[str]],
+                   changed_headers: Set[str], state: Dict[str, Any]) -> Tuple[List[CompileCommand], List[List[str]],
+                                                                              List[CompileCommand], List[List[str]]]:
+    changed_cmds       = []
+    changed_cmds_dep   = []
+    unchanged_cmds     = []
+    unchanged_cmds_dep = []
 
-        for f in files:
-            ext = Path(f).suffix.lower()
-            if ext not in HEADER_EXTENSIONS:
-                continue
-
-            file_path = Path(root) / f
-            cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{get_file_hash(file_path)}.mtime")
-
-            try:
-                mtime = str(file_path.stat().st_mtime)
-            except FileNotFoundError:
-                any_changed = True
-                continue  # skip deleted files
-
-            if not os.path.exists(cache_file):
-                # new file
-                any_changed = True
-                with open(cache_file, "w", encoding="utf8") as cf:
-                    cf.write(mtime + "\n")
+    for i, c in enumerate(cmds):
+        key = c.file
+        if key in state["targets"]:
+            if state["targets"][key]["st_mtime"] != str(os.path.getmtime(c.file)):
+                changed_cmds.append(c)
+                changed_cmds_dep.append(cmds_dep[i])
             else:
-                with open(cache_file, "r", encoding="utf8") as cf:
-                    cached_mtime = cf.readline().strip()
-                if cached_mtime != mtime:
-                    any_changed = True
-                    with open(cache_file, "w", encoding="utf8") as cf:
-                        cf.write(mtime + "\n")
-    return any_changed
+                deps = set(state["targets"][key]["deps"])
+                if not changed_headers.isdisjoint(deps):
+                    changed_cmds.append(c)
+                    changed_cmds_dep.append(cmds_dep[i])
+                else:
+                    unchanged_cmds.append(c)
+                    unchanged_cmds_dep.append(cmds_dep[i])
+        else:
+            changed_cmds.append(c)
+            changed_cmds_dep.append(cmds_dep[i])
+    return changed_cmds, changed_cmds_dep, unchanged_cmds, unchanged_cmds_dep
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Parse compile_commands.json and report compiler errors")
@@ -166,19 +167,43 @@ if __name__ == "__main__":
 
     if not os.path.exists(args.compile_commands):
         raise FileNotFoundError(f"File {args.compile_commands} do not exist")
+    os.makedirs(ERRORS_CACHE_FOLDER, exist_ok=True)
+
+    executor = ProcessPoolExecutor(max_workers=4)
 
     cmds = get_commands_of_interest(args.compile_commands, args.path_prefix)
-    os.makedirs(ERRORS_CACHE_FOLDER, exist_ok=True)
-    any_headers_changed = update_header_file_mtimes(args.path_prefix)
+    cmds_dep, unique_headers = parse_dependencies(cmds, args.path_prefix, executor)
+    state = load_or_initialize_state()
+    changed_headers = get_changed_header_list(unique_headers, state)
 
-    with ProcessPoolExecutor(max_workers=4) as executor:
-        futures = {executor.submit(process, cmd, any_headers_changed): cmd for cmd in cmds}
-        for future in as_completed(futures):
-            cmd = futures[future]
-            try:
-                errors = future.result()
-                if errors:
-                    for e in errors:
-                        print(e, end="")
-            except Exception as e:
-                print(f"[ERROR] {e}", file=sys.stderr)
+    changed_cmds, changed_cmds_dep, \
+    unchanged_cmds, unchanged_cmds_dep = split_commands(cmds, cmds_dep, changed_headers, state)
+
+    futures = { **{executor.submit(run_cmd, cmd): cmd for cmd in changed_cmds},
+                **{executor.submit(print_cache, cmd): cmd for cmd in unchanged_cmds} }
+    deps = changed_cmds_dep + unchanged_cmds_dep
+    cmd_to_deps = {c.file: d for c, d in zip(changed_cmds + unchanged_cmds, deps)}
+
+    for i, future in enumerate(as_completed(futures)):
+        cmd = futures[future]
+        cmd_deps = cmd_to_deps[str(cmd.file)]
+        key = str(cmd.file)
+
+        state["targets"][key] = {}
+        state["targets"][key]["deps"] = cmd_deps
+        state["targets"][key]["st_mtime"] = str(os.path.getmtime(cmd.file))
+        state["targets"][key]["hash"] = get_file_hash(cmd.file)
+        try:
+            errors = future.result()
+            if errors:
+                print(''.join(errors).rstrip('\n'))
+        except Exception as e:
+            print(f"[ERROR] {e}", file=sys.stderr)
+    executor.shutdown(wait=True)
+
+    state["deps"] = {}
+    for h in unique_headers:
+        state["deps"][h] = str(os.path.getmtime(h))
+
+    with open(ERRORS_STATE_FILE, "w", encoding="utf8") as outfile:
+        json.dump(state, outfile)
