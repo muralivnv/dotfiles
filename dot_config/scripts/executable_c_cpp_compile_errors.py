@@ -3,34 +3,61 @@ import subprocess
 import sys
 import os
 from argparse import ArgumentParser
-from typing import List, Optional, TextIO, Dict, Any, Set, Tuple
+from typing import List, Dict, Set, Tuple, Optional
 import json
-import re
 from dataclasses import dataclass, field
-from concurrent.futures import ProcessPoolExecutor, as_completed, ThreadPoolExecutor
+from concurrent.futures import as_completed, ThreadPoolExecutor
 import hashlib
 import shlex
+import pickle
 
 ERRORS_CACHE_FOLDER = ".ronin/c_cpp_errors"
-ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.json")
+ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.pkl")
+
+ContentHash = str
+PathHash = str
 
 @dataclass
 class CompileCommand:
     file: str
     command: List[str]
+    path_hash: PathHash = field(init=False)
+    content_hash: ContentHash = field(init=False)
 
-def add_syntax_only_checks(cmd: str) -> str:
-    return re.sub(r" -o [^ ]+", " -fsyntax-only -w -fdiagnostics-format=json", cmd)
+    def __post_init__(self):
+        self.path_hash = get_file_hash(self.file)
+        self.content_hash = get_file_content_hash(self.file)
 
-def get_commands_of_interest(compile_commands_path: str, path_prefix: str) -> List[CompileCommand]:
+@dataclass
+class TargetFile:
+    header_deps: Set[str]
+    content_hash: ContentHash
+    path_hash: str
+
+@dataclass
+class State:
+    targets: Dict[str, TargetFile]
+    unique_deps: Dict[str, ContentHash]
+
+def add_syntax_only_checks(cmd: str) -> List[str]:
+    parts = shlex.split(cmd)
+    if "-o" in parts:
+        idx = parts.index("-o")
+        parts = parts[:idx] + parts[idx+2:]
+    parts += ["-fsyntax-only", "-w", "-fdiagnostics-format=json"]
+    return parts
+
+def get_commands_of_interest(compile_commands_path: str, path_prefix: str, cxx: Optional[str] = None) -> Dict[str, CompileCommand]:
     commands = None
     with open(compile_commands_path, "r", encoding="utf8") as infile:
         commands = json.load(infile)
-    out = []
+    out = {}
     for c in commands:
         if os.path.exists(c["file"]) and c["file"].startswith(path_prefix):
-            out.append(CompileCommand(file=c["file"],
-                                      command=shlex.split(add_syntax_only_checks(c["command"]))))
+            out[c["file"]] = CompileCommand(file=c["file"],
+                                            command=add_syntax_only_checks(c["command"]))
+            if cxx is not None:
+                out[c["file"]].command[0] = cxx
     return out
 
 def get_file_hash(file: str) -> str:
@@ -39,9 +66,15 @@ def get_file_hash(file: str) -> str:
     h.update(path_bytes)
     return h.hexdigest()
 
-def print_cache(cmd: CompileCommand) -> List[str]:
-    file_hash = get_file_hash(cmd.file)
-    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{file_hash}.errors")
+def get_file_content_hash(file: str) -> str:
+    h = hashlib.blake2b()
+    with open(file, "rb") as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+    return h.hexdigest()
+
+def read_cache(cmd: CompileCommand) -> List[str]:
+    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{cmd.path_hash}.errors")
     if not os.path.exists(cache_file):
         return []
     errors = []
@@ -50,8 +83,7 @@ def print_cache(cmd: CompileCommand) -> List[str]:
     return errors
 
 def run_cmd(cmd: CompileCommand) -> List[str]:
-    file_hash = get_file_hash(cmd.file)
-    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{file_hash}.errors")
+    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{cmd.path_hash}.errors")
     process = subprocess.Popen(cmd.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     _, stderr_data = process.communicate()
 
@@ -75,135 +107,136 @@ def run_cmd(cmd: CompileCommand) -> List[str]:
                 line_num = caret.get("line", 0)
                 col_num = caret.get("column", 0)
                 message = diag.get("message", "").replace("\n", " ")
-                error = f"{file}@{line_num}@{col_num}@{message}\n"
+                error = f"{file}:{line_num}:{col_num}:{message}\n"
                 outfile.write(error)
                 errors.append(error)
         return errors
 
-def get_cmd_dep(cmd: CompileCommand, path_prefix: str) -> List[str]:
+def get_cmd_deps(existing_deps: Set[str], cmd: "CompileCommand", path_prefix: str) -> Set[str]:
     try:
         process = subprocess.run(cmd.command + ["-MM"], capture_output=True, text=True, check=True)
         output = process.stdout.replace("\\\n", "")
         deps = shlex.split(output)
-        filtered_deps = []
+        filtered_deps = set()
         for d in deps[2:]:
-            if os.path.exists(d) and d.startswith(path_prefix):
-                filtered_deps.append(d)
+            if d in existing_deps:
+                filtered_deps.add(d)
         return filtered_deps
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return []
+        return set()
 
-def parse_dependencies(cmds: List[CompileCommand], path_prefix: str,
-                       executor: ProcessPoolExecutor) -> Tuple[List[List[str]], Set[str]]:
-    unique_headers = set()
-    cmds_dep = [[] for _ in range(len(cmds))]
+def get_deps(existing_deps: Set[str], cmds: Dict[str, CompileCommand],
+             path_prefix: str, executor: ThreadPoolExecutor) -> Tuple[Dict[str, Set[str]], Set[str]]:
+    new_unique_deps = set()
+    cmd_deps = {}
+    futures = {executor.submit(get_cmd_deps, existing_deps, cmd, path_prefix): k for k, cmd in cmds.items()}
 
-    futures = {executor.submit(get_cmd_dep, cmd, path_prefix): cmd for cmd in cmds}
-    order = {c.file: i for c, i in zip(cmds, range(len(cmds)))}
+    for future in as_completed(futures):
+        file = futures[future]
+        cmd_deps[file] = future.result()
+        new_unique_deps.update(cmd_deps[file])
+    return cmd_deps, new_unique_deps
 
-    for i, future in enumerate(as_completed(futures)):
-        cmd = futures[future]
-        idx = order[cmd.file]
-        try:
-            cmds_dep[idx] = future.result()
-            unique_headers.update(cmds_dep[idx])
-        except Exception as e:
-            print(f"[ERROR] {e}", file=sys.stderr)
-    return cmds_dep, unique_headers
-
-def load_or_initialize_state() -> Dict[str, Any]:
+def load_or_initialize_state() -> State:
     if os.path.exists(ERRORS_STATE_FILE):
-        with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
-            return json.load(infile)
+        with open(ERRORS_STATE_FILE, "rb") as infile:
+            return pickle.load(infile)
     else:
-        state = {}
-        state["targets"] = {}
-        state["deps"] = {}
+        state = State(targets={}, unique_deps={})
         return state
 
-def get_changed_header_list(headers: Set[str], state: Dict[str, Any]) -> Set[str]:
-    out = []
-    for h in headers:
-        m_time = str(os.path.getmtime(h))
-        if h in state["deps"]:
-            if m_time != state["deps"][h]:
-               out.append(h)
+def get_changed_deps(deps: Set[str], state: State) -> Set[str]:
+    out = set()
+    for d in deps:
+        if d in state.unique_deps:
+            h = get_file_content_hash(d)
+            if h != state.unique_deps[d]:
+               out.add(d)
         else:
-            out.append(h)
-    return set(out)
+            out.add(d)
+    return out
 
-def split_commands(cmds: List[CompileCommand], cmds_dep: List[List[str]],
-                   changed_headers: Set[str], state: Dict[str, Any]) -> Tuple[List[CompileCommand], List[List[str]],
-                                                                              List[CompileCommand], List[List[str]]]:
-    changed_cmds       = []
-    changed_cmds_dep   = []
-    unchanged_cmds     = []
-    unchanged_cmds_dep = []
+def split_commands(cmds: Dict[str, CompileCommand], cmd_deps: Dict[str, Set[str]],
+                   changed_headers: Set[str], state: State) -> Tuple[Set[str], Set[str]]:
+    changed_files = set()
+    unchanged_files = set()
 
-    for i, c in enumerate(cmds):
-        key = c.file
-        if key in state["targets"]:
-            if state["targets"][key]["st_mtime"] != str(os.path.getmtime(c.file)):
-                changed_cmds.append(c)
-                changed_cmds_dep.append(cmds_dep[i])
+    for k, c in cmds.items():
+        if k in state.targets:
+            if state.targets[k].content_hash != c.content_hash:
+                changed_files.add(k)
             else:
-                deps = set(state["targets"][key]["deps"])
-                if not changed_headers.isdisjoint(deps):
-                    changed_cmds.append(c)
-                    changed_cmds_dep.append(cmds_dep[i])
+                if not changed_headers.isdisjoint(cmd_deps[k]):
+                    changed_files.add(k)
                 else:
-                    unchanged_cmds.append(c)
-                    unchanged_cmds_dep.append(cmds_dep[i])
+                    unchanged_files.add(k)
         else:
-            changed_cmds.append(c)
-            changed_cmds_dep.append(cmds_dep[i])
-    return changed_cmds, changed_cmds_dep, unchanged_cmds, unchanged_cmds_dep
+            changed_files.add(k)
+    return changed_files, unchanged_files
+
+def get_existing_deps(state: State, path_prefix: str,
+                      dep_exts: Tuple[str, ...] = (".h", ".hpp", ".hxx", ".hh"),
+                      exclude_dirs: Tuple[str, ...] = ("build")) -> Set[str]:
+    current_deps: Set[str] = set()
+    for root, dirs, files in os.walk(path_prefix):
+        # Modify dirs in-place to skip excluded folders
+        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith(".")]
+
+        for file in files:
+            if file.endswith(dep_exts):
+                full_path = os.path.join(root, file)
+                current_deps.add(os.path.normpath(full_path))
+    return current_deps
+
+def new_deps_added(deps: Set[str], state: State) -> bool:
+    existing_deps = {k for k in state.unique_deps.keys()}
+    return existing_deps != deps
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Parse compile_commands.json and report compiler errors")
     parser.add_argument("--compile-commands", type=str, required=True, dest="compile_commands")
     parser.add_argument("--path-prefix", type=str, required=True, dest="path_prefix")
+    parser.add_argument("--cxx", type=str, required=False, default=None, dest="cxx")
+
     args, _ = parser.parse_known_args()
 
     if not os.path.exists(args.compile_commands):
         raise FileNotFoundError(f"File {args.compile_commands} do not exist")
     os.makedirs(ERRORS_CACHE_FOLDER, exist_ok=True)
 
-    executor = ProcessPoolExecutor(max_workers=4)
-
-    cmds = get_commands_of_interest(args.compile_commands, args.path_prefix)
-    cmds_dep, unique_headers = parse_dependencies(cmds, args.path_prefix, executor)
+    executor = ThreadPoolExecutor(max_workers=4)
     state = load_or_initialize_state()
-    changed_headers = get_changed_header_list(unique_headers, state)
+    cmds = get_commands_of_interest(args.compile_commands, args.path_prefix, args.cxx)
+    deps = get_existing_deps(state, args.path_prefix)
+    if new_deps_added(deps, state):
+        cmd_deps, unique_deps = get_deps(deps, cmds, args.path_prefix, executor)
+    else:
+        cmd_deps = {k: v.header_deps for k, v in state.targets.items()}
+        unique_deps = {k for k in state.unique_deps.keys()}
+    changed_deps = get_changed_deps(unique_deps, state)
+    changed_files, unchanged_files = split_commands(cmds, cmd_deps, changed_deps, state)
 
-    changed_cmds, changed_cmds_dep, \
-    unchanged_cmds, unchanged_cmds_dep = split_commands(cmds, cmds_dep, changed_headers, state)
+    futures = { **{executor.submit(run_cmd, cmds[f]): f for f in changed_files},
+                **{executor.submit(read_cache, cmds[f]): f for f in unchanged_files} }
 
-    futures = { **{executor.submit(run_cmd, cmd): cmd for cmd in changed_cmds},
-                **{executor.submit(print_cache, cmd): cmd for cmd in unchanged_cmds} }
-    deps = changed_cmds_dep + unchanged_cmds_dep
-    cmd_to_deps = {c.file: d for c, d in zip(changed_cmds + unchanged_cmds, deps)}
+    for future in as_completed(futures):
+        file = futures[future]
 
-    for i, future in enumerate(as_completed(futures)):
-        cmd = futures[future]
-        cmd_deps = cmd_to_deps[str(cmd.file)]
-        key = str(cmd.file)
-
-        state["targets"][key] = {}
-        state["targets"][key]["deps"] = cmd_deps
-        state["targets"][key]["st_mtime"] = str(os.path.getmtime(cmd.file))
-        state["targets"][key]["hash"] = get_file_hash(cmd.file)
+        if file not in state.targets:
+            state.targets[file] = TargetFile(set(), "", "")
+        state.targets[file].header_deps = cmd_deps[file]
+        state.targets[file].content_hash = cmds[file].content_hash
+        state.targets[file].path_hash = cmds[file].path_hash
         try:
             errors = future.result()
             if errors:
                 print(''.join(errors).rstrip('\n'))
         except Exception as e:
             print(f"[ERROR] {e}", file=sys.stderr)
-    executor.shutdown(wait=True)
+    executor.shutdown()
 
-    state["deps"] = {}
-    for h in unique_headers:
-        state["deps"][h] = str(os.path.getmtime(h))
+    for c in deps:
+        state.unique_deps[c] = get_file_content_hash(c)
 
-    with open(ERRORS_STATE_FILE, "w", encoding="utf8") as outfile:
-        json.dump(state, outfile)
+    with open(ERRORS_STATE_FILE, "wb") as outfile:
+        pickle.dump(state, outfile)
