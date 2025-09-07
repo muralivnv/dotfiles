@@ -5,14 +5,13 @@ import os
 from argparse import ArgumentParser
 from typing import List, Dict, Set, Tuple, Optional
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from concurrent.futures import as_completed, ThreadPoolExecutor
 import hashlib
 import shlex
-import pickle
 
 ERRORS_CACHE_FOLDER = ".ronin/c_cpp_errors"
-ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.pkl")
+ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.json")
 
 ContentHash = str
 PathHash = str
@@ -32,12 +31,21 @@ class CompileCommand:
 class TargetFile:
     header_deps: Set[str]
     content_hash: ContentHash
-    path_hash: str
+    path_hash: PathHash
 
 @dataclass
 class State:
     targets: Dict[str, TargetFile]
     unique_deps: Dict[str, ContentHash]
+
+    @staticmethod
+    def from_dict(data: Dict) -> "State":
+        targets = {
+            k: TargetFile(**v) for k, v in data.get("targets", {}).items()
+        }
+        for t in targets.values():
+            t.header_deps = set(t.header_deps)
+        return State(targets=targets, unique_deps=data.get("unique_deps", {}))
 
 def add_syntax_only_checks(cmd: str) -> List[str]:
     parts = shlex.split(cmd)
@@ -139,8 +147,11 @@ def get_deps(existing_deps: Set[str], cmds: Dict[str, CompileCommand],
 
 def load_or_initialize_state() -> State:
     if os.path.exists(ERRORS_STATE_FILE):
-        with open(ERRORS_STATE_FILE, "rb") as infile:
-            return pickle.load(infile)
+        with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
+            try:
+                return State.from_dict(json.load(infile))
+            except json.JSONDecodeError:
+                return State(targets={}, unique_deps={})
     else:
         state = State(targets={}, unique_deps={})
         return state
@@ -192,6 +203,11 @@ def new_deps_added(deps: Set[str], state: State) -> bool:
     existing_deps = {k for k in state.unique_deps.keys()}
     return existing_deps != deps
 
+def json_set_to_list(obj):
+    if isinstance(obj, set):
+        return list(obj)
+    raise TypeError
+
 if __name__ == "__main__":
     parser = ArgumentParser(description="Parse compile_commands.json and report compiler errors")
     parser.add_argument("--compile-commands", type=str, required=True, dest="compile_commands")
@@ -238,5 +254,6 @@ if __name__ == "__main__":
     for c in deps:
         state.unique_deps[c] = get_file_content_hash(c)
 
-    with open(ERRORS_STATE_FILE, "wb") as outfile:
-        pickle.dump(state, outfile)
+    with open(ERRORS_STATE_FILE, "w", encoding="utf8") as outfile:
+        state_dict = asdict(state)
+        json.dump(state_dict, outfile, indent=2, default=json_set_to_list)
