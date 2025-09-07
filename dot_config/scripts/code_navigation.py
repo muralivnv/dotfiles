@@ -4,6 +4,7 @@
 import subprocess
 import os
 import re
+import shlex
 from argparse import ArgumentParser
 from typing import Optional, List, Tuple
 
@@ -82,7 +83,7 @@ def get_file_filter_cmd() -> Optional[str]:
 def open_content_picker(query: str = ""):
     filter = get_file_filter_cmd()
     cmd = CONTENT_PICKER_CMD.format(FILE_FILTER_CMD=filter)
-    cmd = cmd  + f" --query='{query}'"
+    cmd = cmd + " --query=" + shlex.quote(query)
     try:
         write_state(open_content_picker.__name__, query)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
@@ -104,7 +105,7 @@ def open_file_picker(query: str = ""):
     if filter is None:
         raise FileNotFoundError(f"File {FILE_FILTER_CMD_FILE} do not exist")
     cmd = FILE_PICKER_CMD.format(FILE_FILTER_CMD=filter)
-    cmd = cmd + f" --query='{query}'"
+    cmd = cmd + " --query=" + shlex.quote(query)
     try:
         write_state(open_file_picker.__name__, query)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
@@ -126,9 +127,9 @@ def open_symbol_picker(file: str = "", query: str = ""):
     if filter is None:
         raise FileNotFoundError(f"File {FILE_FILTER_CMD_FILE} do not exist")
     if file == "":
-        cmd = PROJECT_SYMBOL_PICKER_CMD.format(FILE_FILTER_CMD=filter, QUERY_PLACEHOLDER=query)
+        cmd = PROJECT_SYMBOL_PICKER_CMD.format(FILE_FILTER_CMD=filter, QUERY_PLACEHOLDER=shlex.quote(query))
     else:
-        cmd = FILE_SYMBOL_PICKER_CMD.format(FILE_PLACEHOLDER=file, QUERY_PLACEHOLDER=query)
+        cmd = FILE_SYMBOL_PICKER_CMD.format(FILE_PLACEHOLDER=file, QUERY_PLACEHOLDER=shlex.quote(query))
 
     try:
         write_state(open_symbol_picker.__name__, file, query)
