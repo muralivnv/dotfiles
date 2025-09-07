@@ -3,6 +3,7 @@ import os
 import sys
 from typing import Optional
 import socket
+import shlex
 from argparse import ArgumentParser
 
 FILE_FILTER_CMD_FILE = ".ronin/file-filter.txt"
@@ -15,7 +16,7 @@ FZF_CMD = (
     "--color 'footer-border:#f4a560,footer-label:#ffa07a,footer:#ffa07a' "
 )
 
-WATCH_CMD = f"{{FILE_FILTER_CMD}} | entr -r curl -XPOST localhost:{{FZF_PROC_PORT}} -d 'reload(bash {DIAGNOSTICS_CMD_FILE})' "
+WATCH_CMD = f"{{FILE_FILTER_CMD}} | entr -r curl -XPOST localhost:{{FZF_PROC_PORT}} -d '{{PREPROCESS_CMD}}+reload(bash {DIAGNOSTICS_CMD_FILE})' "
 
 def get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -66,13 +67,14 @@ if __name__ == "__main__":
                + "--bind 'load:execute-silent( "
                     f"win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d'-' -f1); "
                     " if [ \"${FZF_TOTAL_COUNT}\" -gt 0 ]; then "
-                        f"tmux rename-window -t {window_id} \"${{win_name}}-#[fg=yellow]  #[default]${{FZF_TOTAL_COUNT}} \"; "
+                        f"tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ff4400]  #[default]${{FZF_TOTAL_COUNT}} \"; "
                     " else "
                         f"tmux rename-window -t {window_id} \"${{win_name}}\"; "
                     "fi"
                 ")' "
                )
-    watch_cmd = WATCH_CMD.format(FILE_FILTER_CMD=filter, FZF_PROC_PORT=free_port)
+    tmux_hourglass = f"execute(win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d'-' -f1); tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ffd900]  #[default]\";)"
+    watch_cmd = WATCH_CMD.format(FILE_FILTER_CMD=filter, FZF_PROC_PORT=free_port, PREPROCESS_CMD=tmux_hourglass)
 
     if cli_args.open:
         fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=os.getcwd())
