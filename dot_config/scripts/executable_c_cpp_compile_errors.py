@@ -47,15 +47,15 @@ class State:
             t.header_deps = set(t.header_deps)
         return State(targets=targets, unique_deps=data.get("unique_deps", {}))
 
-def add_syntax_only_checks(cmd: str) -> List[str]:
+def remove_object_file(cmd: str) -> List[str]:
     parts = shlex.split(cmd)
     if "-o" in parts:
         idx = parts.index("-o")
         parts = parts[:idx] + parts[idx+2:]
-    parts += ["-fsyntax-only", "-w", "-fdiagnostics-format=json"]
     return parts
 
-def get_commands_of_interest(compile_commands_path: str, path_prefix: str, cxx: Optional[str] = None) -> Dict[str, CompileCommand]:
+def get_commands_of_interest(compile_commands_path: str, path_prefix: str, cxx: Optional[str],
+                             analysis_flags: List[str]) -> Dict[str, CompileCommand]:
     commands = None
     with open(compile_commands_path, "r", encoding="utf8") as infile:
         commands = json.load(infile)
@@ -63,7 +63,8 @@ def get_commands_of_interest(compile_commands_path: str, path_prefix: str, cxx: 
     for c in commands:
         if os.path.exists(c["file"]) and c["file"].startswith(path_prefix):
             out[c["file"]] = CompileCommand(file=c["file"],
-                                            command=add_syntax_only_checks(c["command"]))
+                                            command=remove_object_file(c["command"]))
+            out[c["file"]].command.extend(analysis_flags)
             if cxx is not None:
                 out[c["file"]].command[0] = cxx
     return out
@@ -90,7 +91,7 @@ def read_cache(cmd: CompileCommand) -> List[str]:
         errors = infile.readlines()
     return errors
 
-def run_cmd(cmd: CompileCommand) -> List[str]:
+def run_cmd(cmd: CompileCommand) -> Set[str]:
     cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{cmd.path_hash}.errors")
     process = subprocess.Popen(cmd.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     _, stderr_data = process.communicate()
@@ -98,26 +99,26 @@ def run_cmd(cmd: CompileCommand) -> List[str]:
     with open(cache_file, "w", encoding="utf8") as outfile:
         if not stderr_data:
             outfile.write("")
-            return []
+            return set()
         try:
             diagnostics = json.loads(stderr_data)
         except json.JSONDecodeError:
             outfile.write("")
-            return []
+            return set()
         diagnostics = diagnostics if isinstance(diagnostics, list) else [diagnostics]
-        errors = []
+        errors = set()
         for diag in diagnostics:
             if diag.get("kind") != "error": continue
             for loc in diag.get("locations", []):
                 caret = loc.get("caret", {})
                 file = caret.get("file", "<unknown>")
-                if not file or not str(cmd.file).endswith(file): continue
                 line_num = caret.get("line", 0)
                 col_num = caret.get("column", 0)
                 message = diag.get("message", "").replace("\n", " ")
                 error = f"{file}:{line_num}:{col_num}:{message}\n"
-                outfile.write(error)
-                errors.append(error)
+                errors.add(error)
+        for error in errors:
+            outfile.write(error)
         return errors
 
 def get_cmd_deps(existing_deps: Set[str], cmd: "CompileCommand", path_prefix: str) -> Set[str]:
@@ -145,8 +146,8 @@ def get_deps(existing_deps: Set[str], cmds: Dict[str, CompileCommand],
         new_unique_deps.update(cmd_deps[file])
     return cmd_deps, new_unique_deps
 
-def load_or_initialize_state() -> State:
-    if os.path.exists(ERRORS_STATE_FILE):
+def load_or_initialize_state(ignore_cache: bool = False) -> State:
+    if (not ignore_cache) and os.path.exists(ERRORS_STATE_FILE):
         with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
             try:
                 return State.from_dict(json.load(infile))
@@ -210,9 +211,16 @@ def json_set_to_list(obj):
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Parse compile_commands.json and report compiler errors")
-    parser.add_argument("--compile-commands", type=str, required=True, dest="compile_commands")
-    parser.add_argument("--path-prefix", type=str, required=True, dest="path_prefix")
-    parser.add_argument("--cxx", type=str, required=False, default=None, dest="cxx")
+    parser.add_argument("--compile-commands", help="Path to compile_commands.json", type=str, required=True, dest="compile_commands")
+    parser.add_argument("--path-prefix", help="Only analyze files that has this path prefix", type=str, required=True, dest="path_prefix")
+    parser.add_argument("--cxx", help="Use this C++ compiler instead of default specified in compile_commands.json",
+                        type=str, required=False, default=None, dest="cxx")
+    parser.add_argument("-j", "--jobs", help="Number threads to use", type=int, required=False, default=4, dest="jobs")
+    parser.add_argument("--no-cache", help="Ignore caching and perform analysis from scratch",
+                        action="store_true", required=False, dest="no_cache")
+    parser.add_argument("--analysis-flags", help="Comma separated analysis flags to use",
+                        type=lambda s: s.split(","), required=False, default=["-fsyntax-only"],
+                        dest="analysis_flags")
 
     args, _ = parser.parse_known_args()
 
@@ -220,9 +228,9 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"File {args.compile_commands} do not exist")
     os.makedirs(ERRORS_CACHE_FOLDER, exist_ok=True)
 
-    executor = ThreadPoolExecutor(max_workers=4)
-    state = load_or_initialize_state()
-    cmds = get_commands_of_interest(args.compile_commands, args.path_prefix, args.cxx)
+    executor = ThreadPoolExecutor(max_workers=args.jobs)
+    state = load_or_initialize_state(args.no_cache)
+    cmds = get_commands_of_interest(args.compile_commands, args.path_prefix, args.cxx, args.analysis_flags)
     deps = get_existing_deps(state, args.path_prefix)
     if new_deps_added(deps, state):
         cmd_deps, unique_deps = get_deps(deps, cmds, args.path_prefix, executor)
@@ -251,9 +259,9 @@ if __name__ == "__main__":
             print(f"[ERROR] {e}", file=sys.stderr)
     executor.shutdown()
 
-    for c in deps:
-        state.unique_deps[c] = get_file_content_hash(c)
-
-    with open(ERRORS_STATE_FILE, "w", encoding="utf8") as outfile:
-        state_dict = asdict(state)
-        json.dump(state_dict, outfile, indent=2, default=json_set_to_list)
+    if not args.no_cache:
+        for c in deps:
+            state.unique_deps[c] = get_file_content_hash(c)
+        with open(ERRORS_STATE_FILE, "w", encoding="utf8") as outfile:
+            state_dict = asdict(state)
+            json.dump(state_dict, outfile, indent=2, default=json_set_to_list)
