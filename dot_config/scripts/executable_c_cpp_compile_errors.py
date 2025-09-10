@@ -219,13 +219,14 @@ if __name__ == "__main__":
     parser.add_argument("--no-cache", help="Ignore caching and perform analysis from scratch",
                         action="store_true", required=False, dest="no_cache")
     parser.add_argument("--analysis-flags", help="Comma separated analysis flags to use",
-                        type=lambda s: s.split(","), required=False, default=["-fsyntax-only"],
+                        type=lambda s: s.split(","), required=False, default=["-fsyntax-only", "-fdiagnostics-format=json"],
                         dest="analysis_flags")
 
     args, _ = parser.parse_known_args()
 
     if not os.path.exists(args.compile_commands):
-        raise FileNotFoundError(f"File {args.compile_commands} do not exist")
+        print (f"[ERROR] File {args.compile_commands} do not exist")
+        sys.exit(1)
     os.makedirs(ERRORS_CACHE_FOLDER, exist_ok=True)
 
     executor = ThreadPoolExecutor(max_workers=args.jobs)
