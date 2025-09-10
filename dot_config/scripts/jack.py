@@ -4,7 +4,7 @@ import re
 from argparse import ArgumentParser
 from typing import List, TextIO, Tuple
 
-def parse_replacement(expr: str):
+def parse_replacement(expr: str, flags: int):
     if len(expr) < 3:
         raise ValueError(f"Invalid replacement: {expr}")
     delim = expr[0]
@@ -12,7 +12,7 @@ def parse_replacement(expr: str):
     if len(parts) < 3:
         raise ValueError(f"Replacement must be in form {delim}search{delim}replace{delim}")
     _, pattern, replacement, *rest = parts
-    return re.compile(pattern), replacement
+    return re.compile(pattern, flags), replacement
 
 def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern],
             replacements: List[Tuple[re.Pattern, str]], extractors: List[re.Pattern]) -> None:
@@ -57,13 +57,20 @@ if __name__ == "__main__":
                           type=str, dest="extractors", action="append")
 
     cli_args.add_argument("files", nargs="*", help="input files (default: stdin)")
+    cli_args.add_argument("-i", "--ignore-case", help="perform case-insensitive matching",
+                          action="store_true", dest="ignore_case")
 
     args = cli_args.parse_args()
+    flags = re.IGNORECASE if args.ignore_case else 0
 
-    filters      = [re.compile(p) for p in (args.filters or [])]
-    excludes     = [re.compile(p) for p in (args.excludes or [])]
-    replacements = [parse_replacement(r) for r in (args.replacements or [])]
-    extractors   = [re.compile(e) for e in (args.extractors or [])]
+    try:
+        filters      = [re.compile(p, flags) for p in (args.filters or [])]
+        excludes     = [re.compile(p, flags) for p in (args.excludes or [])]
+        replacements = [parse_replacement(r, flags) for r in (args.replacements or [])]
+        extractors   = [re.compile(e, flags) for e in (args.extractors or [])]
+    except re.error as e:
+        print(f"Error: Invalid regular expression: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if not args.files:
         process(sys.stdin, filters, excludes, replacements, extractors)
