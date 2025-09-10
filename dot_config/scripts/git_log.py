@@ -12,8 +12,8 @@ COMMIT_SCRIPT = os.path.join(SCRIPT_DIR, "git_commit.py")
 GIT_BRANCH_SCRIPT = os.path.join(SCRIPT_DIR, "lib/git_branch.py")
 BRANCH_ACTIONS = os.path.join(SCRIPT_DIR, "lib/branch_actions.py")
 COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
-BRANCH_EXTRACT_COMMAND = "purl -extract \"#^\d+@([A-Za-z0-9._\/-]+)#\$1#\""
-COMMIT_EXTRACT_COMMAND = "purl -extract \"#\*\s+([a-z0-9]{4,})#\$1#\""
+BRANCH_EXTRACT_COMMAND = "python3 ~/.config/scripts/jack.py --extract \"^\d+@([A-Za-z0-9._\/-]+)\""
+COMMIT_EXTRACT_COMMAND = "python3 ~/.config/scripts/jack.py --extract \"\*\s+([a-z0-9]{4,})\""
 GIT_BRANCH_BASE_COMMAND = f"python3 {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
 GIT_LOG_BASE_COMMAND = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
 TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -DE "

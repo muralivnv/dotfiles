@@ -1,4 +1,4 @@
-python3 ~/.config/scripts/c_cpp_compile_errors.py --build-dir <path-to-dir-with-compile-commands> --project <tag-to-search>
+python3 ~/.config/scripts/c_cpp_compile_errors.py --compile-commands <path-to-dir-with-compile-commands> --path-prefix <tag-to-search>
 
 jq '[.[] | select(.file | test("<tag-to-search>"))]' <path-to-compile-commands> > <path-to-project>/.ronin/compile_commands.json && cppcheck --project=<path-to-project>/.ronin/compile_commands.json --quiet --enable=warning,performance,style -j4 --template='{file}@{line}@{column}@{message}\n' 2>&1
 

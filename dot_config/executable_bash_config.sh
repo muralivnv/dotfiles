@@ -28,5 +28,10 @@ alias gf="git fetch --all"
 alias gp="git pull --rebase"
 alias gP="git push"
 alias gPf="git push --force-with-lease"
+
+function jack {
+    python3 "$HOME/.config/scripts/jack.py" "$@"
+}
+export -f jack
 export EDITOR=hx
 export GIT_EDITOR=hx

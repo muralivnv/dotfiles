@@ -1,1 +1,0 @@
-purl -exclude '^(\.|build|appimage|resources|external)' -exclude '(txt|db|spv|png|pgm)$'

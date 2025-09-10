@@ -23,8 +23,10 @@ FILE_PICKER_CMD    = f"{{FILE_FILTER_CMD}} | xargs -I % echo '%@1' | {FZF_CMD} -
 
 FILE_SYMBOL_PICKER_CMD     = f"treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
 PROJECT_SYMBOL_PICKER_CMD  = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
-GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | purl -filter '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
-SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | purl -filter '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+
+GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | python3 ~/.config/scripts/jack.py -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
+
+SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | python3 ~/.config/scripts/jack.py -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
 def write_state(func: str, *args) -> None:
     os.makedirs(".ronin", exist_ok=True)
@@ -210,7 +212,7 @@ def get_clipboard_data() -> str:
         return data
 
 if __name__ == "__main__":
-    cli_args = ArgumentParser(description="Code navigation using FZF, Purl and Treesitter")
+    cli_args = ArgumentParser(description="Code navigation using FZF, Jack and Treesitter")
     cli_args.add_argument("--open-last-picker", action="store_true", default=False, dest="open_last_picker")
     cli_args.add_argument("--open-file-picker", action="store_true", default=False, dest="open_file_picker")
     cli_args.add_argument("--open-content-picker", action="store_true", default=False, dest="open_content_picker")

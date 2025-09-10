@@ -53,14 +53,6 @@ install_tool "bat" "0.25.0" \
   "bat-v0.25.0-x86_64-unknown-linux-musl.tar.gz" \
   "bat-v0.25.0-x86_64-unknown-linux-musl/bat"
 
-# purl
-install_tool "purl" "v0.2.1" \
-  "purl --version" \
-  "awk '{gsub(/;$/,\"\",\$3); print \$3}'" \
-  "https://github.com/catatsuy/purl/releases/download/v0.2.1/purl-linux-amd64.tar.gz" \
-  "purl-linux-amd64.tar.gz" \
-  "purl"
-
 # zoxide
 install_tool "zoxide" "0.9.8" \
   "zoxide --version" \
