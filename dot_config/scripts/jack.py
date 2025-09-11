@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import re
+import os
 from argparse import ArgumentParser
 from typing import List, TextIO, Tuple
+import tempfile
 
-def parse_replacement(expr: str, flags: int):
+def parse_replacement(expr: str):
     if len(expr) < 3:
         raise ValueError(f"Invalid replacement: {expr}")
     delim = expr[0]
@@ -12,10 +14,11 @@ def parse_replacement(expr: str, flags: int):
     if len(parts) < 3:
         raise ValueError(f"Replacement must be in form {delim}search{delim}replace{delim}")
     _, pattern, replacement, *rest = parts
-    return re.compile(pattern, flags), replacement
+    return re.compile(pattern), replacement
 
 def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern],
-            replacements: List[Tuple[re.Pattern, str]], extractors: List[re.Pattern]) -> None:
+            replacements: List[Tuple[re.Pattern, str]], extractors: List[re.Pattern],
+            out_stream: TextIO = sys.stdout) -> None:
     for line in stream:
         line = line.rstrip("\n")
 
@@ -36,11 +39,11 @@ def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern
                 m = regex.search(line)
                 if m:
                     if m.groups():
-                        print("".join(m.groups()))
+                        print("".join(m.groups()), file=out_stream)
                     else:
-                        print(m.group(0))
+                        print(m.group(0), file=out_stream)
             continue
-        print(line)
+        print(line, file=out_stream)
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Modern replacement to Sed and Grep")
@@ -52,24 +55,26 @@ if __name__ == "__main__":
 
     cli_args.add_argument("-r", "--replace", help="regexp search and replace",
                           type=str, dest="replacements", action="append")
+    cli_args.add_argument("--overwrite", help="overwrite in-place",
+                          action="store_true", dest="overwrite")
 
     cli_args.add_argument("--extract", help="regexp to extract from line",
                           type=str, dest="extractors", action="append")
 
     cli_args.add_argument("files", nargs="*", help="input files (default: stdin)")
-    cli_args.add_argument("-i", "--ignore-case", help="perform case-insensitive matching",
-                          action="store_true", dest="ignore_case")
 
     args = cli_args.parse_args()
-    flags = re.IGNORECASE if args.ignore_case else 0
-
     try:
-        filters      = [re.compile(p, flags) for p in (args.filters or [])]
-        excludes     = [re.compile(p, flags) for p in (args.excludes or [])]
-        replacements = [parse_replacement(r, flags) for r in (args.replacements or [])]
-        extractors   = [re.compile(e, flags) for e in (args.extractors or [])]
+        filters      = [re.compile(p) for p in (args.filters or [])]
+        excludes     = [re.compile(p) for p in (args.excludes or [])]
+        replacements = [parse_replacement(r) for r in (args.replacements or [])]
+        extractors   = [re.compile(e) for e in (args.extractors or [])]
     except re.error as e:
         print(f"Error: Invalid regular expression: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.overwrite and not any(replacements):
+        print(f"Error: flag 'overwrite' can be specified only with replacements")
         sys.exit(1)
 
     if not args.files:
@@ -78,6 +83,18 @@ if __name__ == "__main__":
         for fname in args.files:
             if fname == "-":
                 process(sys.stdin, filters, excludes, replacements, extractors)
-            else:
+            elif not args.overwrite:
                 with open(fname, "r", encoding="utf8") as f:
                     process(f, filters, excludes, replacements, extractors)
+            else:
+                tmp_name = None
+                try:
+                    dir_name = os.path.dirname(fname)
+                    with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tmp:
+                        tmp_name = tmp.name
+                        with open(fname, "r", encoding="utf8") as f:
+                            process(f, filters, excludes, replacements, extractors, out_stream=tmp)
+                    os.replace(tmp_name, fname)
+                finally:
+                    if tmp_name and os.path.exists(tmp_name):
+                        os.remove(tmp_name)

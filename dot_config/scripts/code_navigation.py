@@ -24,9 +24,9 @@ FILE_PICKER_CMD    = f"{{FILE_FILTER_CMD}} | xargs -I % echo '%@1' | {FZF_CMD} -
 FILE_SYMBOL_PICKER_CMD     = f"treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
 PROJECT_SYMBOL_PICKER_CMD  = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
-GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | python3 ~/.config/scripts/jack.py -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
+GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | jack -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
 
-SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | python3 ~/.config/scripts/jack.py -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | jack -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
 def write_state(func: str, *args) -> None:
     os.makedirs(".ronin", exist_ok=True)

@@ -1,1 +1,1 @@
-find . -type f -printf '%P\n' | python3 ~/.config/scripts/jack.py -e '^(\.|build|appimage|resources|external|\.ronin|\.git)' -e '(txt|db|spv|png|pgm)$'
+find . -type f -printf '%P\n' | jack -e '^(\.|build|appimage|resources|external|\.ronin|\.git)' -e '(txt|db|spv|png|pgm)$'
