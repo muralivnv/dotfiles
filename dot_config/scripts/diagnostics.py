@@ -5,7 +5,7 @@ import socket
 import shlex
 import hashlib
 from argparse import ArgumentParser
-from watchfiles import watch, DefaultFilter
+from watchfiles import watch, DefaultFilter, Change
 from threading import Thread, Event
 
 DIAGNOSTICS_CMD_FILE = ".ronin/diagnostics.txt"
@@ -57,9 +57,10 @@ def watch_thread(window_id: str, free_port: int, stop_event: Event):
     for changes in watch(os.getcwd(), **WATCH_ARGS):
         if stop_event.is_set():
             break
-        changed_files = {el[1] for el in changes}
         rerun_diagnostics = False
-        for file in changed_files:
+        for change, file in changes:
+            if change == Change.deleted:
+                continue
             file_hash = get_file_content_hash(file)
             if file not in files_state:
                 rerun_diagnostics = True
