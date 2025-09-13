@@ -1,3 +1,10 @@
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.13"
+# dependencies = []
+# ///
+
 import subprocess
 from typing import Optional, Tuple
 from argparse import ArgumentParser

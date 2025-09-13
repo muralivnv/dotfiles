@@ -1,9 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.13"
+# dependencies = []
+# ///
+
 import sys
 import re
 import os
 from argparse import ArgumentParser
-from typing import List, TextIO, Tuple
+from typing import List, TextIO, Tuple, Optional, Callable
 import tempfile
 
 def parse_replacement(expr: str):
@@ -18,8 +24,12 @@ def parse_replacement(expr: str):
 
 def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern],
             replacements: List[Tuple[re.Pattern, str]], extractors: List[re.Pattern],
-            out_stream: TextIO = sys.stdout) -> None:
-    for line in stream:
+            out_stream: TextIO = sys.stdout, fname: Optional[str] = None) -> None:
+    verbose_print = False
+    if (fname is not None) and any(filters) or any(excludes):
+        verbose_print = True
+
+    for k, line in enumerate(stream):
         line = line.rstrip("\n")
 
         # filters
@@ -43,7 +53,10 @@ def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern
                     else:
                         print(m.group(0), file=out_stream)
             continue
-        print(line, file=out_stream)
+        if not verbose_print:
+            print(line, file=out_stream)
+        else:
+            print(f"{fname}:{k}:0:{line}", file=out_stream)
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Modern replacement to Sed and Grep")
@@ -84,8 +97,11 @@ if __name__ == "__main__":
             if fname == "-":
                 process(sys.stdin, filters, excludes, replacements, extractors)
             elif not args.overwrite:
-                with open(fname, "r", encoding="utf8") as f:
-                    process(f, filters, excludes, replacements, extractors)
+                try:
+                    with open(fname, "r", encoding="utf8") as f:
+                        process(f, filters, excludes, replacements, extractors, fname=fname)
+                except Exception as e:
+                    print(e)
             else:
                 tmp_name = None
                 try:

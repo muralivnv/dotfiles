@@ -21,9 +21,9 @@ bind -x '"\C-p": fzf_file_widget'
 bind -x '"\t" : fzf_bash_completion'
 
 alias '..'='cd ..'
-alias gr="python3 $HOME/.config/scripts/git_repo_list.py"
-alias gl="python3 $HOME/.config/scripts/git_log.py"
-alias gc="python3 $HOME/.config/scripts/git_commit.py"
+alias gr="uv run $HOME/.config/scripts/git_repo_list.py"
+alias gl="uv run $HOME/.config/scripts/git_log.py"
+alias gc="uv run $HOME/.config/scripts/git_commit.py"
 alias gf="git fetch --all"
 alias gp="git pull --rebase"
 alias gP="git push"

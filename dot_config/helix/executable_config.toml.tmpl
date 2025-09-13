@@ -75,7 +75,7 @@ backspace = "delete_char_backward"
 "]"       = { "]" = "jump_forward"  }
 "\\"    = "vsplit"
 "|"     = "hsplit"
-"'"     = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-file-picker"
+"'"     = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-file-picker"
 "tab"   = "indent"
 "S-tab" = "unindent"
 "A-t"   = "smart_tab"
@@ -112,22 +112,22 @@ x         = "extend_line"
 "F"       = "extend_prev_char"
 
 [keys.normal.space]
-"space" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-last-picker > /dev/null 2>&1 &"
-"/" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-content-picker > /dev/null 2>&1 &"
+"space" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-last-picker > /dev/null 2>&1 &"
+"/" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-content-picker > /dev/null 2>&1 &"
 "i" = ":sh python3 {{ .chezmoi.homeDir}}/.config/scripts/devdocs.py > /dev/null 2>&1 &"
-"s" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker --file %{buffer_name} > /dev/null 2>&1 &"
-"S" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker > /dev/null 2>&1 &"
-"D" = ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
+"s" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker --file %{buffer_name} > /dev/null 2>&1 &"
+"S" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker > /dev/null 2>&1 &"
+"D" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
 
 [keys.normal.g]
 t = "goto_file_start"
 b = "goto_last_line"
 
 d = ["collapse_selection", "expand_selection", "trim_selections",
-     ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --goto-definition --symbol %{selection} > /dev/null 2>&1 &"]
+     ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --goto-definition --symbol %{selection} > /dev/null 2>&1 &"]
 
 r = ["collapse_selection", "expand_selection", "trim_selections",
-     ":pipe-to python3 {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --show-references --symbol %{selection} > /dev/null 2>&1 &"]
+     ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --show-references --symbol %{selection} > /dev/null 2>&1 &"]
 
 i = "hover"
 H = "extend_to_line_start"

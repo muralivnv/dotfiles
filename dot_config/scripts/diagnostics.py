@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#   "watchfiles",
+# ]
+# ///
+
 import subprocess
 import os
 from pathlib import Path
