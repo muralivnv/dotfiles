@@ -68,6 +68,8 @@ def watch_thread(window_id: str, free_port: int, stop_event: Event):
         for change, file in changes:
             if change == Change.deleted:
                 continue
+            if not os.path.exists(file):
+                continue
             file_hash = get_file_content_hash(file)
             if file not in files_state:
                 rerun_diagnostics = True
