@@ -22,37 +22,32 @@ def parse_replacement(expr: str) -> Tuple[re.Pattern, str]:
     _, pattern, replacement, *rest = parts
     return re.compile(pattern), replacement
 
-def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern],
-            replacements: List[Tuple[re.Pattern, str]], extractors: List[re.Pattern],
+def combine_patterns(patterns: List[re.Pattern]) -> Optional[re.Pattern]:
+    if not patterns:
+        return None
+    combined = "|".join(f"(?:{p.pattern})" for p in patterns)
+    return re.compile(combined)
+
+def process(stream: TextIO, filter: Optional[re.Pattern], exclude: Optional[re.Pattern],
+            replacements: List[Tuple[re.Pattern, str]],
             out_stream: TextIO = sys.stdout, fname: Optional[str] = None) -> None:
     verbose_print = False
-    if (fname is not None) and (any(filters) or any(excludes)):
+    if (fname is not None) and (filter or exclude):
         verbose_print = True
 
     for k, line in enumerate(stream):
         line = line.rstrip("\n")
 
-        # filters
-        if filters and not any(r.search(line) for r in filters):
+        if filter and not filter.search(line):
             continue
 
-        # excludes
-        if excludes and any(r.search(line) for r in excludes):
+        if exclude and exclude.search(line):
             continue
 
         # replacements
         for regex, repl in replacements:
             line = regex.sub(repl, line)
 
-        if extractors:
-            for regex in extractors:
-                m = regex.search(line)
-                if m:
-                    if m.groups():
-                        print("".join(m.groups()), file=out_stream)
-                    else:
-                        print(m.group(0), file=out_stream)
-            continue
         if not verbose_print:
             print(line, file=out_stream)
         else:
@@ -60,28 +55,25 @@ def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Modern replacement to Sed and Grep")
-    cli_args.add_argument("-f", "--filter", help="regexp to filter",
+    cli_args.add_argument("-f", "--filter", help="regexp to filter (can be specified n-times)",
                           type=str, dest="filters", action="append")
 
-    cli_args.add_argument("-e", "--exclude", help="regexp to exclude",
+    cli_args.add_argument("-e", "--exclude", help="regexp to exclude (can be specified n-times)",
                           type=str, dest="excludes", action="append")
 
-    cli_args.add_argument("-r", "--replace", help="regexp search and replace",
+    cli_args.add_argument("-r", "--replace", help="regexp search and replace (can be specified n-times)",
                           type=str, dest="replacements", action="append")
-    cli_args.add_argument("--overwrite", help="overwrite in-place",
-                          action="store_true", dest="overwrite")
 
-    cli_args.add_argument("--extract", help="regexp to extract from line",
-                          type=str, dest="extractors", action="append")
+    cli_args.add_argument("-o", "--overwrite", help="overwrite in-place",
+                          action="store_true", dest="overwrite")
 
     cli_args.add_argument("files", nargs="*", help="input files (default: stdin)")
 
     args = cli_args.parse_args()
     try:
-        filters      = [re.compile(p) for p in (args.filters or [])]
-        excludes     = [re.compile(p) for p in (args.excludes or [])]
+        filter      = combine_patterns([re.compile(p) for p in (args.filters or [])])
+        exclude     = combine_patterns([re.compile(p) for p in (args.excludes or [])])
         replacements = [parse_replacement(r) for r in (args.replacements or [])]
-        extractors   = [re.compile(e) for e in (args.extractors or [])]
     except re.error as e:
         print(f"Error: Invalid regular expression: {e}", file=sys.stderr)
         sys.exit(1)
@@ -91,17 +83,17 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if not args.files:
-        process(sys.stdin, filters, excludes, replacements, extractors)
+        process(sys.stdin, filter, exclude, replacements)
     else:
         for fname in args.files:
             if fname == "-":
-                process(sys.stdin, filters, excludes, replacements, extractors)
+                process(sys.stdin, filter, exclude, replacements)
             elif not args.overwrite:
                 try:
                     with open(fname, "r", encoding="utf8") as f:
-                        process(f, filters, excludes, replacements, extractors, fname=fname)
+                        process(f, filter, exclude, replacements, fname=fname)
                 except Exception as e:
-                    print(e)
+                    print(f"Error processing {fname}: {e}", file=sys.stderr)
             else:
                 tmp_name = None
                 try:
@@ -109,7 +101,7 @@ if __name__ == "__main__":
                     with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tmp:
                         tmp_name = tmp.name
                         with open(fname, "r", encoding="utf8") as f:
-                            process(f, filters, excludes, replacements, extractors, out_stream=tmp)
+                            process(f, filter, exclude, replacements, out_stream=tmp)
                     os.replace(tmp_name, fname)
                 finally:
                     if tmp_name and os.path.exists(tmp_name):
