@@ -8,35 +8,35 @@
 import subprocess
 import os
 
-FZF_ESC_RET_CODE = 130
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_SCRIPT = os.path.join(SCRIPT_DIR, "git_repo_list.py")
-LOG_SCRIPT = os.path.join(SCRIPT_DIR, "git_log.py")
-STATUS_SCRIPT = os.path.join(SCRIPT_DIR, "lib/git_status.py")
-COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
-TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -DE "
+FZF_ESC_RET_CODE   = 130
+SCRIPT_DIR         = os.path.dirname(os.path.abspath(__file__))
+REPO_SCRIPT        = os.path.join(SCRIPT_DIR, "git_repo_list.py")
+LOG_SCRIPT         = os.path.join(SCRIPT_DIR, "git_log.py")
+STATUS_SCRIPT      = os.path.join(SCRIPT_DIR, "lib/git_status.py")
+COMMIT_ACTIONS     = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
+TMUX_POPUP         = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
 GIT_STATUS_COMMAND = f"uv run {STATUS_SCRIPT}"
-PREFIX_EXTRACTION = "$(echo {} | cut -c1) "
-FILE_EXTRACTION = "$(echo {} | cut -c3-) "
+PREFIX_EXTRACTION  = "$(echo {} | cut -c1) "
+FILE_EXTRACTION    = "$(echo {} | cut -c3-) "
 
 PREVIEW_COMMAND = (
     "--preview '"
     f"prefix={PREFIX_EXTRACTION}; "
     f"file={FILE_EXTRACTION}; "
-    "case \"$prefix\" in "
-    "S) git diff --cached -- \"$file\" | bat --language=Diff ;; "
-    "U) git diff -- \"$file\" | bat --language=Diff ;; "
-    "?) bat \"$file\" ;; "
+    r'case "$prefix" in '
+    r'S) git diff --cached -- "$file" | bat --language=Diff ;; '
+    r'U) git diff -- "$file" | bat --language=Diff ;; '
+    r'?) bat "$file" ;; '
     "esac'"
 )
 
 PATCH_COMMAND = (
     f"prefix={PREFIX_EXTRACTION}; "
     f"file={FILE_EXTRACTION}; "
-    "case \"$prefix\" in "
-    "S) git reset -p \"$file\" ;; "
-    "U) git add -p \"$file\" ;; "
-    "?) git add --intent-to-add \"$file\" && git add -p \"$file\" ;; "
+    r'case "$prefix" in '
+    r'S) git reset -p "$file" ;; '
+    r'U) git add -p "$file" ;; '
+    r'?) git add --intent-to-add "$file" && git add -p "$file" ;; '
     "esac"
 )
 
@@ -54,11 +54,11 @@ class StatusPage:
             f"--bind 'alt-p:execute({PATCH_COMMAND})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-g:reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-e:execute($EDITOR {FILE_EXTRACTION})' "
-            f"--bind 'alt-c:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} commit_changes)' "\
-            f"--bind 'alt-P:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes)' "\
-            f"--bind 'alt-l:become(uv run {LOG_SCRIPT})' "\
-            f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
-             "--bind=tab:down,shift-tab:up "\
+            f"--bind 'alt-c:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} commit_changes)' "
+            f"--bind 'alt-P:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes)' "
+            f"--bind 'alt-l:become(uv run {LOG_SCRIPT})' "
+            f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "
+             "--bind=tab:down,shift-tab:up "
             f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
         )
 

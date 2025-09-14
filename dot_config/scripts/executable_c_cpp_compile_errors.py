@@ -19,8 +19,8 @@ import shlex
 ERRORS_CACHE_FOLDER = ".ronin/c_cpp_compile_errors"
 ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.json")
 
-ContentHash = str
-PathHash = str
+type ContentHash = str
+type PathHash = str
 
 @dataclass
 class CompileCommand:

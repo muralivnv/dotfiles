@@ -26,8 +26,11 @@ FZF_CMD = (
 WATCH_ARGS = {
     "debounce": 1000,
     "step": 100,
-    "watch_filter": DefaultFilter(ignore_dirs=("__pycache__", "build", ".git", ".hg", ".svn", ".tox", ".venv", ".idea", "node_modules", ".mypy_cache", ".pytest_cache", ".hypothesis", ".ronin", "install", "log"),
-                                  ignore_entity_patterns=("\\.py[cod]$", "\\.___jb_...___$", "\\.sw.$", "~$", "^\\.\\#", "^\\.DS_Store$", "^flycheck_", "\\.bck$"))
+    "watch_filter": DefaultFilter(ignore_dirs=("__pycache__", "build", ".git", ".hg", ".svn", ".tox",
+                                               ".venv", ".idea", "node_modules", ".mypy_cache", ".pytest_cache",
+                                               ".hypothesis", ".ronin", "install", "log"),
+                                  ignore_entity_patterns=("\\.py[cod]$", "\\.___jb_...___$", "\\.sw.$", "~$",
+                                                          "^\\.\\#", "^\\.DS_Store$", "^flycheck_", "\\.bck$"))
 }
 
 FZF_RELOAD_COMMAND = f"curl -XPOST localhost:{{FZF_PROC_PORT}} -d '{{PREPROCESS_CMD}}+reload(bash {DIAGNOSTICS_CMD_FILE})' "
@@ -56,27 +59,38 @@ def get_file_content_hash(file: str) -> str:
 
 def watch_thread(window_id: str, free_port: int, stop_event: Event):
     files_state = {}
-    tmux_hourglass = f"execute(win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d'-' -f1); tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ffd900]  #[default]\";)"
+    tmux_hourglass = (f"execute(win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d'-' -f1); "
+                      f"tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ffd900]  #[default]\";)" )
     fzf_reload_cmd = shlex.split(FZF_RELOAD_COMMAND.format(FZF_PROC_PORT=free_port, PREPROCESS_CMD=tmux_hourglass))
-
-    subprocess.run(fzf_reload_cmd, shell=False, cwd=os.getcwd())
+    try:
+        subprocess.run(fzf_reload_cmd, shell=False, cwd=os.getcwd())
+    except subprocess.SubprocessError as e:
+        print(e)
+        exit(1)
     for changes in watch(os.getcwd(), **WATCH_ARGS):
         if stop_event.is_set():
             break
         rerun_diagnostics = False
         for change, file in changes:
-            if change == Change.deleted:
-                continue
-            if not os.path.exists(file):
-                continue
-            file_hash = get_file_content_hash(file)
-            if file not in files_state:
-                rerun_diagnostics = True
-            elif file_hash != files_state[file]:
-                rerun_diagnostics = True
-            files_state[file] = file_hash
+            try:
+                if change == Change.deleted:
+                    continue
+                if not os.path.exists(file):
+                    continue
+                file_hash = get_file_content_hash(file)
+                if file not in files_state:
+                    rerun_diagnostics = True
+                elif file_hash != files_state[file]:
+                    rerun_diagnostics = True
+                files_state[file] = file_hash
+            except Exception:
+                pass
         if rerun_diagnostics:
-            subprocess.run(fzf_reload_cmd, shell=False, cwd=os.getcwd())
+            try:
+                subprocess.run(fzf_reload_cmd, shell=False, cwd=os.getcwd())
+            except subprocess.SubprocessError as e:
+                print(e)
+                exit(1)
 
 if __name__ == "__main__":
     window_id = get_tmux_window_id()
@@ -99,7 +113,6 @@ if __name__ == "__main__":
                )
     stop_event = Event()
     t = Thread(target=watch_thread, args=(window_id, free_port, stop_event))
-
     fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=os.getcwd())
     t.start()
     fzf_proc.wait()

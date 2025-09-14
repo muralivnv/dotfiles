@@ -18,10 +18,10 @@ TREESITTER_TAGS_CONFIG_FILE = ".ronin/treesitter-tags.txt"
 LAST_PICKER_STATE_FILE      = ".ronin/last-picker-state.txt"
 
 PREVIEW_CMD    = "--preview 'bat {{1}} --highlight-line {{2}}' --preview-window 'right,+{{2}}+3/3,~3' "
-FZF_CMD        = f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} " \
-                  "--delimiter '@' --scrollbar '▍' " \
-                  "--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle " \
-                  "--style=full:line --layout=reverse --print-query"
+FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
+                  f"--delimiter '@' --scrollbar '▍' "
+                  f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
+                  f"--style=full:line --layout=reverse --print-query")
 
 CONTENT_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs -I % awk '{{{{print FILENAME \"@\" FNR \"@\" $0}}}}' % | {FZF_CMD} --tiebreak=begin"
 FILE_PICKER_CMD    = f"{{FILE_FILTER_CMD}} | xargs -I % echo '%@1' | {FZF_CMD} --nth=1 --tiebreak=pathname"

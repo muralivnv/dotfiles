@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from typing import List, TextIO, Tuple, Optional
 import tempfile
 
-def parse_replacement(expr: str):
+def parse_replacement(expr: str) -> Tuple[re.Pattern, str]:
     if len(expr) < 3:
         raise ValueError(f"Invalid replacement: {expr}")
     delim = expr[0]
@@ -26,7 +26,7 @@ def process(stream: TextIO, filters: List[re.Pattern], excludes: List[re.Pattern
             replacements: List[Tuple[re.Pattern, str]], extractors: List[re.Pattern],
             out_stream: TextIO = sys.stdout, fname: Optional[str] = None) -> None:
     verbose_print = False
-    if (fname is not None) and any(filters) or any(excludes):
+    if (fname is not None) and (any(filters) or any(excludes)):
         verbose_print = True
 
     for k, line in enumerate(stream):
