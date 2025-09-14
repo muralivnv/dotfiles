@@ -11,7 +11,7 @@ import os
 import re
 import shlex
 from argparse import ArgumentParser
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 FILE_FILTER_CMD_FILE        = ".ronin/file-filter.txt"
 TREESITTER_TAGS_CONFIG_FILE = ".ronin/treesitter-tags.txt"

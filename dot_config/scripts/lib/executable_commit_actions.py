@@ -79,7 +79,7 @@ def commit_changes():
             if stripped.endswith("COMMIT_MESSAGE"):
                 continue
             elif stripped == "<<<DIFF>>>":
-                break;
+                break
             lines.append(line)
             has_content |= bool(stripped)
     if lines and has_content:

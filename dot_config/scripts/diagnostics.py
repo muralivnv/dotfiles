@@ -11,7 +11,6 @@ from pathlib import Path
 import socket
 import shlex
 import hashlib
-from argparse import ArgumentParser
 from watchfiles import watch, DefaultFilter, Change
 from threading import Thread, Event
 

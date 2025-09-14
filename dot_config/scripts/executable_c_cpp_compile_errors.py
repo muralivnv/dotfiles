@@ -16,7 +16,7 @@ from concurrent.futures import as_completed, ThreadPoolExecutor
 import hashlib
 import shlex
 
-ERRORS_CACHE_FOLDER = ".ronin/c_cpp_errors"
+ERRORS_CACHE_FOLDER = ".ronin/c_cpp_compile_errors"
 ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.json")
 
 ContentHash = str
@@ -114,7 +114,8 @@ def run_cmd(cmd: CompileCommand) -> Set[str]:
         diagnostics = diagnostics if isinstance(diagnostics, list) else [diagnostics]
         errors = set()
         for diag in diagnostics:
-            if diag.get("kind") != "error": continue
+            if diag.get("kind") != "error":
+                continue
             for loc in diag.get("locations", []):
                 caret = loc.get("caret", {})
                 file = caret.get("file", "<unknown>")

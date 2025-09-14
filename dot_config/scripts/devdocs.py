@@ -5,7 +5,6 @@ import webview
 import os
 import sys
 from typing import Optional
-from dataclasses import dataclass
 
 WEBPAGES = {
     "DevDocs"     : "https://devdocs.io",

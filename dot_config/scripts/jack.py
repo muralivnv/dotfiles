@@ -9,7 +9,7 @@ import sys
 import re
 import os
 from argparse import ArgumentParser
-from typing import List, TextIO, Tuple, Optional, Callable
+from typing import List, TextIO, Tuple, Optional
 import tempfile
 
 def parse_replacement(expr: str):
@@ -87,7 +87,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if args.overwrite and not any(replacements):
-        print(f"Error: flag 'overwrite' can be specified only with replacements")
+        print("Error: flag 'overwrite' can be specified only with replacements")
         sys.exit(1)
 
     if not args.files:

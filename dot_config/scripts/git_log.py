@@ -21,16 +21,16 @@ BRANCH_ACTIONS = os.path.join(SCRIPT_DIR, "lib/branch_actions.py")
 COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
 BRANCH_EXTRACT_COMMAND = r'jack --extract "^\d+@([A-Za-z0-9._\/-]+)"'
 COMMIT_EXTRACT_COMMAND = r'jack --extract "\*\s+([a-z0-9]{4,})"'
-GIT_BRANCH_BASE_COMMAND = f"uv run {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
-GIT_LOG_BASE_COMMAND = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
-TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -DE "
+GIT_BRANCH_BASE_COMMAND = fr'uv run {GIT_BRANCH_SCRIPT} | nl -w1 -s"{DELIMITER}"'
+GIT_LOG_BASE_COMMAND = r'git log --oneline --graph --decorate --color --pretty=format:"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s"'
+TMUX_POPUP = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)
     try:
         ret = int(items[0].strip())
         return ret
-    except:
+    except Exception:
         pass
     return None
 
@@ -74,7 +74,7 @@ class BranchPage:
         try:
             branch = selection.split(DELIMITER)[1].split(" ")[0].strip()
             return branch
-        except:
+        except Exception:
             pass
         return None
 
@@ -121,7 +121,7 @@ class LogPage:
         try:
             hash = selection.split(DELIMITER)[1].strip().split(' ')[1]
             return hash
-        except:
+        except Exception:
             pass
         return None
 

@@ -33,13 +33,13 @@ def search(bm_filepath: str):
         selection = subprocess.check_output(f"sed -e '/^$/d' -e '/^\s*#[^()]*$/d' {bm_filepath} | {FZF_CMD}", shell=True)
         selection = selection.decode("utf8")
         links = parse_link(selection)
-        if (not links is None) and (any(links)):
+        if (links is not None) and (any(links)):
             for link in links:
                 os.system(f"xdg-open {link}")
                 sleep(0.3)
 
     except subprocess.CalledProcessError as e:
-        if not (e.returncode in FZF_ERR_CODE_TO_IGNORE):
+        if e.returncode not in FZF_ERR_CODE_TO_IGNORE:
             print(e)
     except Exception as e:
         print(e)
