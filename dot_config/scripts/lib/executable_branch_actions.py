@@ -1,9 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#   "prompt_toolkit"
+# ]
+# ///
+
 from re import match
 from subprocess import run, CalledProcessError
 import sys
-from readline import set_startup_hook, insert_text
 from typing import Optional
+from prompt_toolkit import prompt
 
 def _extract_branch(text) -> Optional[str]:
     m = match(r"^\d+@([A-Za-z0-9._/-]+)\s+", text)
@@ -14,25 +22,23 @@ def _extract_branch(text) -> Optional[str]:
         return branch
     return None
 
-def _run_editable_command(initial_cmd) -> bool:
-    set_startup_hook(lambda: insert_text(initial_cmd))
+def _run_editable_command(initial_cmd: str) -> None:
     try:
-        user_cmd = input()
-    finally:
-        set_startup_hook(None)
+        user_cmd = prompt("💀 ", default=initial_cmd)
+    except KeyboardInterrupt:
+        return
 
     if not user_cmd.strip():
-        return False
+        return
     try:
         run(user_cmd, shell=True, check=True)
-        return True
-    except CalledProcessError:
-        print()
+    except CalledProcessError as e:
+        print("\nCommand failed.")
+        print(e)
         try:
-            input()
+            input("Press Enter to continue...")
         except EOFError:
             pass
-        return False
 
 def checkout_branch(arg) -> None:
     branch = _extract_branch(arg)

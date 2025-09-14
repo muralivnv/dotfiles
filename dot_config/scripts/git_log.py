@@ -21,7 +21,7 @@ BRANCH_ACTIONS = os.path.join(SCRIPT_DIR, "lib/branch_actions.py")
 COMMIT_ACTIONS = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
 BRANCH_EXTRACT_COMMAND = r'jack --extract "^\d+@([A-Za-z0-9._\/-]+)"'
 COMMIT_EXTRACT_COMMAND = r'jack --extract "\*\s+([a-z0-9]{4,})"'
-GIT_BRANCH_BASE_COMMAND = f"python3 {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
+GIT_BRANCH_BASE_COMMAND = f"uv run {GIT_BRANCH_SCRIPT} | nl -w1 -s\"{DELIMITER}\""
 GIT_LOG_BASE_COMMAND = "git log --oneline --graph --decorate --color --pretty=format:\"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s\""
 TMUX_POPUP = "tmux display-popup -w 60% -h 60% -d \"$(git rev-parse --show-toplevel)\" -DE "
 
@@ -39,18 +39,18 @@ class BranchPage:
         self._vis_command: str = f" | " \
                                  f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} " \
                                  f"$(echo {{}} | {BRANCH_EXTRACT_COMMAND}) ' --preview-window=bottom:70% " \
-                                 f"--bind 'alt-b:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} checkout_branch {{}})' " \
-                                 f"--bind 'alt-x:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} reset_branch {{}})' "\
-                                 f"--bind 'alt-k:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} delete_branch {{}})' " \
-                                 f"--bind 'alt-K:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} force_delete_branch {{}})' "\
-                                 f"--bind 'alt-c:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} create_branch {{}})' " \
+                                 f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} checkout_branch {{}})' " \
+                                 f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} reset_branch {{}})' "\
+                                 f"--bind 'alt-k:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} delete_branch {{}})' " \
+                                 f"--bind 'alt-K:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} force_delete_branch {{}})' "\
+                                 f"--bind 'alt-c:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} create_branch {{}})' " \
                                  f"--bind 'alt-f:execute-silent({TMUX_POPUP} git fetch --all)' "\
-                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} python3 {BRANCH_ACTIONS} pull_rebase)' "\
-                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} push_changes)' "\
+                                 f"--bind 'alt-F:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} pull_rebase)' "\
+                                 f"--bind 'alt-P:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes)' "\
                                  f"--bind 'alt-g:reload-sync({GIT_BRANCH_BASE_COMMAND})' "\
-                                 f"--bind 'alt-q:become(python3 {COMMIT_SCRIPT})' "\
+                                 f"--bind 'alt-q:become(uv run {COMMIT_SCRIPT})' "\
                                  f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
-                                 f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
+                                 f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "\
                                  "--bind=tab:down,shift-tab:up "
         self._last_selected_line: int = 0
 
@@ -85,13 +85,13 @@ class LogPage:
                                   f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "\
                                   f"--preview 'echo {{}} | {COMMIT_EXTRACT_COMMAND} | xargs git show | bat --color=always --language=Diff ' "\
                                   "--preview-window=bottom:70% "\
-                                  f"--bind 'alt-b:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} checkout_commit {{}})' "\
-                                  f"--bind 'alt-x:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} soft_reset_to_commit {{}})' "\
-                                  f"--bind 'alt-X:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} hard_reset_to_commit {{}})' "\
-                                  f"--bind 'alt-A:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} cherry_pick {{}})' "\
-                                  f"--bind 'alt-a:execute-silent({TMUX_POPUP} python3 {COMMIT_ACTIONS} cherry_pick_no_commit {{}})' "\
+                                  f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} checkout_commit {{}})' "\
+                                  f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} soft_reset_to_commit {{}})' "\
+                                  f"--bind 'alt-X:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} hard_reset_to_commit {{}})' "\
+                                  f"--bind 'alt-A:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick {{}})' "\
+                                  f"--bind 'alt-a:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick_no_commit {{}})' "\
                                   f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
-                                  f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
+                                  f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "\
                                   f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches --all | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "\
                                   "--bind=tab:down,shift-tab:up "
 
@@ -142,7 +142,7 @@ class DiffPage:
                       f"--preview 'git show --format= {commit_hash} {{2}} | bat --color=always --language=Diff' "\
                       f"--header-label 'Info' --bind 'focus:+bg-transform-header:git show {commit_hash} -s' "\
                       f"--bind 'alt-t:execute-silent({TMUX_POPUP})' "\
-                      f"--bind 'alt-r:become(python3 {REPO_SCRIPT})' "\
+                      f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "\
                       "--bind=tab:down,shift-tab:up "
 
             output = subprocess.check_output(self._base_command + commit_hash + vis_cmd,

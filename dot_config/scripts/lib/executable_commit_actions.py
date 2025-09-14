@@ -1,11 +1,19 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#   "prompt_toolkit"
+# ]
+# ///
+
 from os import environ, remove
 from re import search
 from subprocess import run, CalledProcessError
 import sys
 import tempfile
-from readline import set_startup_hook, insert_text
 from typing import Optional
+from prompt_toolkit import prompt
 
 def extract_commit_hash(text) -> Optional[str]:
     m = search(r"\*\s+([a-z0-9]{4,})", text)
@@ -13,42 +21,43 @@ def extract_commit_hash(text) -> Optional[str]:
         return m.group(1)
     return None
 
-def run_editable_command(initial_cmd) -> None:
-    set_startup_hook(lambda: insert_text(initial_cmd))
+def _run_editable_command(initial_cmd: str) -> None:
     try:
-        user_cmd = input()
-    finally:
-        set_startup_hook(None)
+        user_cmd = prompt("💀 ", default=initial_cmd)
+    except KeyboardInterrupt:
+        return
+
     if not user_cmd.strip():
         return
     try:
         run(user_cmd, shell=True, check=True)
-    except CalledProcessError:
-        print()
+    except CalledProcessError as e:
+        print("\nCommand failed.")
+        print(e)
         try:
-            input()
+            input("Press Enter to continue...")
         except EOFError:
             pass
 
 def checkout_commit(arg):
     commit = extract_commit_hash(arg)
-    run_editable_command(f'git checkout "{commit}" ')
+    _run_editable_command(f'git checkout "{commit}" ')
 
 def soft_reset_to_commit(arg):
     commit = extract_commit_hash(arg)
-    run_editable_command(f'git reset --soft "{commit}" ')
+    _run_editable_command(f'git reset --soft "{commit}" ')
 
 def hard_reset_to_commit(arg):
     commit = extract_commit_hash(arg)
-    run_editable_command(f'git reset --hard "{commit}" ')
+    _run_editable_command(f'git reset --hard "{commit}" ')
 
 def cherry_pick(arg):
     commit = extract_commit_hash(arg)
-    run_editable_command(f'git cherry-pick "{commit}" ')
+    _run_editable_command(f'git cherry-pick "{commit}" ')
 
 def cherry_pick_no_commit(arg):
     commit = extract_commit_hash(arg)
-    run_editable_command(f'git cherry-pick --no-commit "{commit}" ')
+    _run_editable_command(f'git cherry-pick --no-commit "{commit}" ')
 
 def commit_changes():
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".diff", delete=False) as tmpfile:
@@ -83,7 +92,7 @@ def commit_changes():
         print("Empty commit message -- aborting")
 
 def push_changes():
-    run_editable_command("git push ")
+    _run_editable_command("git push ")
 
 COMMANDS = {
     "checkout_commit"      : checkout_commit,
