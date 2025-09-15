@@ -23,15 +23,15 @@ FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
                   f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
                   f"--style=full:line --layout=reverse --print-query")
 
-CONTENT_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs -I % awk '{{{{print FILENAME \"@\" FNR \"@\" $0}}}}' % | {FZF_CMD} --tiebreak=begin"
+CONTENT_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs -P4 -I % jack -f '.*[a-zA-Z0-9]' --no-color --pretty -d@ --file % | {FZF_CMD} --tiebreak=begin"
 FILE_PICKER_CMD    = f"{{FILE_FILTER_CMD}} | xargs -I % echo '%@1' | {FZF_CMD} --nth=1 --tiebreak=pathname"
 
 FILE_SYMBOL_PICKER_CMD     = f"treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
 PROJECT_SYMBOL_PICKER_CMD  = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
-GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | jack -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
+GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | jack -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
 
-SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | jack -f '\\b{{QUERY_PLACEHOLDER}}\\b' | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs treesitter_tags --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | jack -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
 def write_state(func: str, *args) -> None:
     os.makedirs(".ronin", exist_ok=True)

@@ -52,7 +52,7 @@ def process(stream: TextIO, filter: Optional[re.Pattern], exclude: Optional[re.P
         for regex, repl in replacements:
             old_line = line
             line = regex.sub(repl, line)
-        formatter(k, line, match, old_line)
+        formatter(k+1, line, match, old_line)
 
 def identity(linenum: int, new_content: str, match: Optional[re.Match], old_content: Optional[str]) -> None:
     _ = linenum
@@ -60,7 +60,7 @@ def identity(linenum: int, new_content: str, match: Optional[re.Match], old_cont
     _ = old_content
     print(new_content)
 
-def diff_print(linenum:int, new_content: str, old_content: str, filename: str) -> None:
+def diff_print(linenum:int, new_content: str, old_content: str, filename: str, delimiter: str) -> None:
     old_words = old_content.rstrip("\n").split()
     new_words = new_content.rstrip("\n").split()
 
@@ -77,17 +77,17 @@ def diff_print(linenum:int, new_content: str, old_content: str, filename: str) -
         elif token.startswith("  "):
             colored_parts.append(token[2:])
     colored_line = " ".join(colored_parts)
-    print(f"{filename}:{linenum}:{colored_line}")
+    print(f"{filename}{delimiter}{linenum}{delimiter}{colored_line}")
 
 def pretty(linenum:int, new_content: str, match: Optional[re.Match],
-           old_content: str, filename: str) -> None:
+           old_content: str, filename: str, delimiter: str) -> None:
     if match:
         line = new_content.rstrip("\n")
         start, end = match.span()
         colored_line = f"{line[:start]}{BOLD_RED}{line[start:end]}{RESET}{line[end:]}"
-        print(f"{filename}:{linenum}:{colored_line}")
+        print(f"{filename}{delimiter}{linenum}{delimiter}{colored_line}")
     else:
-        diff_print(linenum, new_content, old_content, filename)
+        diff_print(linenum, new_content, old_content, filename, delimiter)
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Modern replacement to Sed and Grep")
@@ -106,15 +106,26 @@ if __name__ == "__main__":
     cli_args.add_argument("-p", "--pretty", help="pretty print output",
                           action="store_true", required=False, dest="pretty")
 
+    cli_args.add_argument("-d", "--delimiter", help="delimiter to use for pretty print",
+                          type=str, required=False, default=":", dest="delimiter")
+
+    cli_args.add_argument("--no-color", action="store_true", required=False, dest="no_color")
+
     args = cli_args.parse_args()
 
     formatter = None
     if not args.pretty:
         formatter = identity
     elif args.file is None:
-        formatter = partial(pretty, filename="STDIN")
+        formatter = partial(pretty, filename="STDIN", delimiter=args.delimiter)
     else:
-        formatter = partial(pretty, filename=args.file)
+        formatter = partial(pretty, filename=args.file, delimiter=args.delimiter)
+
+    if args.no_color:
+        # set colors to empty
+        BOLD_RED = ""
+        BOLD_GREEN = ""
+        RESET = ""
 
     try:
         filter = combine_patterns([re.compile(p) for p in (args.filters or [])])
