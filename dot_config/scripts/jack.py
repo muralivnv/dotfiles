@@ -9,8 +9,15 @@ import sys
 import re
 import os
 from argparse import ArgumentParser
-from typing import List, TextIO, Tuple, Optional
-import tempfile
+from typing import List, TextIO, Tuple, Optional, Callable
+from functools import partial
+import difflib
+
+type Formatter = Callable[[int, str], None]
+
+BOLD_RED = "\033[1;31m"
+BOLD_GREEN = "\033[1;32m"
+RESET = "\033[0m"
 
 def parse_replacement(expr: str) -> Tuple[re.Pattern, str]:
     if len(expr) < 3:
@@ -29,29 +36,58 @@ def combine_patterns(patterns: List[re.Pattern]) -> Optional[re.Pattern]:
     return re.compile(combined)
 
 def process(stream: TextIO, filter: Optional[re.Pattern], exclude: Optional[re.Pattern],
-            replacements: List[Tuple[re.Pattern, str]],
-            out_stream: TextIO = sys.stdout, fname: Optional[str] = None) -> None:
-    verbose_print = False
-    if (fname is not None) and (filter or exclude):
-        verbose_print = True
-
+            replacements: List[Tuple[re.Pattern, str]], formatter: Formatter) -> None:
     for k, line in enumerate(stream):
         line = line.rstrip("\n")
 
-        if filter and not filter.search(line):
+        match = None
+        if filter and not (match := filter.search(line)):
             continue
 
         if exclude and exclude.search(line):
             continue
 
         # replacements
+        old_line = None
         for regex, repl in replacements:
+            old_line = line
             line = regex.sub(repl, line)
+        formatter(k, line, match, old_line)
 
-        if not verbose_print:
-            print(line, file=out_stream)
-        else:
-            print(f"{fname}:{k}:0:{line}", file=out_stream)
+def identity(linenum: int, new_content: str, match: Optional[re.Match], old_content: Optional[str]) -> None:
+    _ = linenum
+    _ = match
+    _ = old_content
+    print(new_content)
+
+def diff_print(linenum:int, new_content: str, old_content: str, filename: str) -> None:
+    old_words = old_content.rstrip("\n").split()
+    new_words = new_content.rstrip("\n").split()
+
+    diff = list(difflib.ndiff(old_words, new_words))
+    if not any(token.startswith(("+", "-")) for token in diff):
+        return
+
+    colored_parts = []
+    for token in diff:
+        if token.startswith("- "):
+            colored_parts.append(f"{BOLD_RED}{token[2:]}{RESET}")
+        elif token.startswith("+ "):
+            colored_parts.append(f"{BOLD_GREEN}{token[2:]}{RESET}")
+        elif token.startswith("  "):
+            colored_parts.append(token[2:])
+    colored_line = " ".join(colored_parts)
+    print(f"{filename}:{linenum}:{colored_line}")
+
+def pretty(linenum:int, new_content: str, match: Optional[re.Match],
+           old_content: str, filename: str) -> None:
+    if match:
+        line = new_content.rstrip("\n")
+        start, end = match.span()
+        colored_line = f"{line[:start]}{BOLD_RED}{line[start:end]}{RESET}{line[end:]}"
+        print(f"{filename}:{linenum}:{colored_line}")
+    else:
+        diff_print(linenum, new_content, old_content, filename)
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Modern replacement to Sed and Grep")
@@ -64,45 +100,37 @@ if __name__ == "__main__":
     cli_args.add_argument("-r", "--replace", help="regexp search and replace (can be specified n-times)",
                           type=str, dest="replacements", action="append")
 
-    cli_args.add_argument("-o", "--overwrite", help="overwrite in-place",
-                          action="store_true", dest="overwrite")
+    cli_args.add_argument("--file", help="input file. If not given, stdin will be used",
+                          type=str, default=None, required=False, dest="file")
 
-    cli_args.add_argument("files", nargs="*", help="input files (default: stdin)")
+    cli_args.add_argument("-p", "--pretty", help="pretty print output",
+                          action="store_true", required=False, dest="pretty")
 
     args = cli_args.parse_args()
+
+    formatter = None
+    if not args.pretty:
+        formatter = identity
+    elif args.file is None:
+        formatter = partial(pretty, filename="STDIN")
+    else:
+        formatter = partial(pretty, filename=args.file)
+
     try:
-        filter      = combine_patterns([re.compile(p) for p in (args.filters or [])])
-        exclude     = combine_patterns([re.compile(p) for p in (args.excludes or [])])
+        filter = combine_patterns([re.compile(p) for p in (args.filters or [])])
+        exclude = combine_patterns([re.compile(p) for p in (args.excludes or [])])
         replacements = [parse_replacement(r) for r in (args.replacements or [])]
     except re.error as e:
         print(f"Error: Invalid regular expression: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if args.overwrite and not any(replacements):
-        print("Error: flag 'overwrite' can be specified only with replacements")
-        sys.exit(1)
-
-    if not args.files:
-        process(sys.stdin, filter, exclude, replacements)
+    if args.file is None:
+        process(sys.stdin, filter, exclude, replacements, formatter)
     else:
-        for fname in args.files:
-            if fname == "-":
-                process(sys.stdin, filter, exclude, replacements)
-            elif not args.overwrite:
-                try:
-                    with open(fname, "r", encoding="utf8") as f:
-                        process(f, filter, exclude, replacements, fname=fname)
-                except Exception as e:
-                    print(f"Error processing {fname}: {e}", file=sys.stderr)
-            else:
-                tmp_name = None
-                try:
-                    dir_name = os.path.dirname(fname)
-                    with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tmp:
-                        tmp_name = tmp.name
-                        with open(fname, "r", encoding="utf8") as f:
-                            process(f, filter, exclude, replacements, out_stream=tmp)
-                    os.replace(tmp_name, fname)
-                finally:
-                    if tmp_name and os.path.exists(tmp_name):
-                        os.remove(tmp_name)
+        if not os.path.exists(args.file):
+            raise FileNotFoundError(f"Input file {args.file} does not exist")
+        try:
+            with open(args.file, "r", encoding="utf8") as f:
+                process(f, filter, exclude, replacements, formatter)
+        except Exception as e:
+            print(f"Error processing {args.file}: {e}", file=sys.stderr)
