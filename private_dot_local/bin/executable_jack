@@ -1,3 +1,0 @@
-#!/bin/sh
-exec uv run ~/.config/scripts/jack.py "$@"
-
