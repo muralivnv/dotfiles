@@ -12,6 +12,7 @@ import re
 import shlex
 from argparse import ArgumentParser
 from typing import Optional, List
+import traceback
 
 FILE_FILTER_CMD_FILE        = ".ronin/file-filter.txt"
 TREESITTER_TAGS_CONFIG_FILE = ".ronin/treesitter-tags.txt"
@@ -95,17 +96,18 @@ def open_content_picker(query: str = ""):
         write_state(open_content_picker.__name__, query)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
         query_and_files = result.splitlines()
-        if len(query_and_files) == 1:
-            query = ""
-            files = query_and_files[0]
-        else:
-            query = query_and_files[0]
-            files = query_and_files[1:]
-        write_state(open_content_picker.__name__, query)
-        file_line_col = to_file_line_col(files)
-        open_files_in_editor(file_line_col)
-    except Exception as e:
-        print(e)
+        if any(query_and_files):
+            if len(query_and_files) == 1:
+                query = ""
+                files = query_and_files[0]
+            else:
+                query = query_and_files[0]
+                files = query_and_files[1:]
+            write_state(open_content_picker.__name__, query)
+            file_line_col = to_file_line_col(files)
+            open_files_in_editor(file_line_col)
+    except Exception:
+        traceback.print_exc()
 
 def open_file_picker(query: str = ""):
     filter = get_file_filter_cmd()
@@ -117,17 +119,18 @@ def open_file_picker(query: str = ""):
         write_state(open_file_picker.__name__, query)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
         query_and_files = result.splitlines()
-        if len(query_and_files) == 1:
-            query = ""
-            files = query_and_files[0]
-        else:
-            query = query_and_files[0]
-            files = query_and_files[1:]
-        write_state(open_file_picker.__name__, query)
-        file_line_col = to_file_line_col(files)
-        open_files_in_editor(file_line_col)
-    except Exception as e:
-        print(e)
+        if any(query_and_files):
+            if len(query_and_files) == 1:
+                query = ""
+                files = query_and_files[0]
+            else:
+                query = query_and_files[0]
+                files = query_and_files[1:]
+            write_state(open_file_picker.__name__, query)
+            file_line_col = to_file_line_col(files)
+            open_files_in_editor(file_line_col)
+    except Exception:
+        traceback.print_exc()
 
 def open_symbol_picker(file: str = "", query: str = ""):
     filter = get_file_filter_cmd()
@@ -142,23 +145,22 @@ def open_symbol_picker(file: str = "", query: str = ""):
         write_state(open_symbol_picker.__name__, file, query)
         selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
         query_and_files = selections.splitlines()
-        if len(query_and_files) == 1:
-            query = ""
-            files = query_and_files[0]
-        else:
-            query = query_and_files[0]
-            files = query_and_files[1:]
-        write_state(open_symbol_picker.__name__, file, query)
-        file_line_col = to_file_line_col(files)
-        open_files_in_editor(file_line_col)
-    except Exception as e:
-        print(e)
+        if any(query_and_files):
+            if len(query_and_files) == 1:
+                query = ""
+                files = query_and_files[0]
+            else:
+                query = query_and_files[0]
+                files = query_and_files[1:]
+            write_state(open_symbol_picker.__name__, file, query)
+            file_line_col = to_file_line_col(files)
+            open_files_in_editor(file_line_col)
+    except Exception:
+        traceback.print_exc()
 
-def goto_definition(symbol: str = ""):
+def goto_definition(symbol: str):
     if not symbol:
-        symbol = get_clipboard_data()
-        if not symbol:
-            return
+        return
 
     filter = get_file_filter_cmd()
     if filter is None:
@@ -170,23 +172,22 @@ def goto_definition(symbol: str = ""):
         query_and_files = selections.splitlines()
         if not any(query_and_files):
             show_references(symbol)
-        if len(query_and_files) == 1:
-            query = ""
-            files = query_and_files[0]
         else:
-            query = query_and_files[0]
-            files = query_and_files[1:]
-        write_state(goto_definition.__name__, query)
-        file_line_col = to_file_line_col(files)
-        open_files_in_editor(file_line_col)
-    except Exception as e:
-        print(e)
+            if len(query_and_files) == 1:
+                query = ""
+                files = query_and_files[0]
+            else:
+                query = query_and_files[0]
+                files = query_and_files[1:]
+            write_state(goto_definition.__name__, query)
+            file_line_col = to_file_line_col(files)
+            open_files_in_editor(file_line_col)
+    except Exception:
+        traceback.print_exc()
 
-def show_references(symbol: str = ""):
+def show_references(symbol: str):
     if not symbol:
-        symbol = get_clipboard_data()
-        if not symbol:
-            return
+        return
 
     filter = get_file_filter_cmd()
     if filter is None:
@@ -197,24 +198,18 @@ def show_references(symbol: str = ""):
         write_state(show_references.__name__, symbol)
         selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
         query_and_files = selections.splitlines()
-        if len(query_and_files) == 1:
-            query = ""
-            files = query_and_files[0]
-        else:
-            query = query_and_files[0]
-            files = query_and_files[1:]
-        write_state(show_references.__name__, query)
-        file_line_col = to_file_line_col(files)
-        open_files_in_editor(file_line_col)
-    except Exception as e:
-        print(e)
-
-def get_clipboard_data() -> str:
-    with subprocess.Popen(["xclip","-selection", "clipboard", "-o"], stdout=subprocess.PIPE) as p:
-        p.wait()
-        data = p.stdout.read()
-        data = data.decode("utf-8")
-        return data
+        if any(query_and_files):
+            if len(query_and_files) == 1:
+                query = ""
+                files = query_and_files[0]
+            else:
+                query = query_and_files[0]
+                files = query_and_files[1:]
+            write_state(show_references.__name__, query)
+            file_line_col = to_file_line_col(files)
+            open_files_in_editor(file_line_col)
+    except Exception:
+        traceback.print_exc()
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Code navigation using FZF, Jack and Treesitter")
@@ -228,6 +223,9 @@ if __name__ == "__main__":
     cli_args.add_argument("--symbol", type=str, default="", dest="symbol")
 
     args, _ = cli_args.parse_known_args()
+    if (args.goto_definition or args.show_references) and not args.symbol:
+        cli_args.error("--symbol is required when using --goto-definition or --show-references")
+
     if args.open_last_picker:
         open_last_picker()
     elif args.open_file_picker:
