@@ -24,7 +24,7 @@ FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
                   f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
                   f"--style=full:line --layout=reverse --print-query")
 
-CONTENT_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs -I % gai -f '.*[a-zA-Z0-9]' -v -d @ --files % | {FZF_CMD} --tiebreak=begin"
+CONTENT_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs gai -f '\\w' -v -d @ --files | {FZF_CMD} --tiebreak=begin"
 FILE_PICKER_CMD    = f"{{FILE_FILTER_CMD}} | xargs -I % echo '%@1' | {FZF_CMD} --nth=1 --tiebreak=pathname"
 
 FILE_SYMBOL_PICKER_CMD     = f"sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
