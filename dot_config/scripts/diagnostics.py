@@ -19,7 +19,7 @@ DIAGNOSTICS_CMD_FILE = ".ronin/diagnostics.txt"
 FZF_CMD = (
     "fzf --border -i --preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
     "--delimiter : --nth 1 --scrollbar '▍' --bind=tab:down,shift-tab:up --smart-case --cycle "
-    "--style=full:line --layout=reverse --footer 'Error' --bind 'focus:+bg-transform-footer:echo {4} | fold -s -w 100' "
+    "--style=full:line --layout=reverse --footer 'Error' --bind 'focus:+bg-transform-footer:echo {} | cut -d: -f4- | fold -s -w 100' "
     "--color 'footer-border:#f4a560,footer-label:#ffa07a,footer:#ffa07a' "
 )
 
