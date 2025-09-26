@@ -28,7 +28,7 @@ install_tool() {
 
     curl -fsSL "$download_url" -o "$archive_path"
 
-    tar -xzf "$archive_path" -C "$tmpdir"
+    tar -xf "$archive_path" -C "$tmpdir"
 
     mv "$tmpdir/$extracted_bin_path" "$INSTALL_DIR/$name"
     chmod +x "$INSTALL_DIR/$name"
@@ -76,6 +76,20 @@ install_tool "pastel" "0.10.0" \
   "https://github.com/sharkdp/pastel/releases/download/v0.10.0/pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
   "pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
   "pastel-v0.10.0-x86_64-unknown-linux-musl/pastel"
+
+install_tool "gai" "25.10.0" \
+  "gai --version" \
+  "awk '{print \$0}'" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10/gai-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
+  "gai-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
+  "gai"
+
+install_tool "sakura" "25.10.0" \
+  "sakura --version" \
+  "awk '{print \$0}'" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10/sakura-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
+  "sakura-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
+  "sakura"
 
 echo "Installing moreutils"
 sudo apt install moreutils
