@@ -20,7 +20,7 @@ BRANCH_ACTIONS          = os.path.join(SCRIPT_DIR, "lib/branch_actions.py")
 COMMIT_ACTIONS          = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
 BRANCH_EXTRACT_COMMAND  = r'gai -r "#^\d+@([A-Za-z0-9._\/-]+).*#\$1#"'
 COMMIT_EXTRACT_COMMAND  = r'gai -r "#^\d+@(?:.*)\*\s+([a-z0-9]{4,}).*#\$1#"'
-GIT_BRANCH_BASE_COMMAND = fr'uv run {GIT_BRANCH_SCRIPT} | nl -w1 -s"{DELIMITER}"'
+GIT_BRANCH_BASE_COMMAND = fr'uv run {GIT_BRANCH_SCRIPT} | gai -f "\w" -v -d {DELIMITER}'
 GIT_LOG_BASE_COMMAND    = (r'git log --oneline --graph --decorate --color '
                            r'--pretty=format:"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s"')
 TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
@@ -81,7 +81,7 @@ class BranchPage:
 class LogPage:
     def __init__(self, log_limit: int):
         self._base_command: str = GIT_LOG_BASE_COMMAND + f" -n{log_limit} "
-        self._vis_command: str  = (f" | nl -w1 -s\"{DELIMITER}\" | "
+        self._vis_command: str  = (f" | gai -f \"\\w\" -v -d {DELIMITER} | "
                                    f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
                                    f"--preview 'echo {{}} | {COMMIT_EXTRACT_COMMAND} | xargs git show | bat --color=always --language=Diff ' "
                                    "--preview-window=bottom:70% "
@@ -102,7 +102,7 @@ class LogPage:
             log_cmd = self._base_command +  branch
             vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' " +\
                       f"--header 'Branch: {branch}' " + \
-                      f"--bind 'alt-g:reload-sync({log_cmd} | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Branch: {branch})' "
+                      f"--bind 'alt-g:reload-sync({log_cmd} | gai -f \"\\w\" -v -d {DELIMITER})+bg-transform-header(Branch: {branch})' "
                       
             output = subprocess.check_output(log_cmd + vis_cmd, shell=True, universal_newlines=True)
             selected_line = get_selected_line(output)
@@ -128,7 +128,7 @@ class LogPage:
 class DiffPage:
     def __init__(self):
         self._base_command: str = "git show --pretty= --name-only "
-        self._vis_command: str = (f" | nl -w1 -s\"{DELIMITER}\" | "
+        self._vis_command: str = (f" | gai -f \"\\w\" -v -d {DELIMITER} | "
                                   f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
                                   "--preview-window=bottom:70% ")
         self._last_selected_line: int = 0
