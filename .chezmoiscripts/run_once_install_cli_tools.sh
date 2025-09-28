@@ -77,18 +77,18 @@ install_tool "pastel" "0.10.0" \
   "pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
   "pastel-v0.10.0-x86_64-unknown-linux-musl/pastel"
 
-install_tool "gai" "25.10.0" \
+install_tool "gai" "25.10.1" \
   "gai --version" \
   "awk '{print \$0}'" \
-  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10/gai-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
-  "gai-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10.1/gai-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
+  "gai-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
   "gai"
 
-install_tool "sakura" "25.10.0" \
+install_tool "sakura" "25.10.1" \
   "sakura --version" \
   "awk '{print \$0}'" \
-  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10/sakura-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
-  "sakura-v25.10.0-x86_64-unknown-linux-musl.tar.xz" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10.1/sakura-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
+  "sakura-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
   "sakura"
 
 echo "Installing moreutils"
