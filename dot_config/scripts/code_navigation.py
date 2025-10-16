@@ -10,6 +10,7 @@ import subprocess
 import os
 import re
 import shlex
+import tempfile
 from argparse import ArgumentParser
 from typing import Optional, List
 import traceback
@@ -17,9 +18,10 @@ import traceback
 FILE_FILTER_CMD_FILE        = ".ronin/file-filter.txt"
 TREESITTER_TAGS_CONFIG_FILE = ".ronin/treesitter-tags.txt"
 LAST_PICKER_STATE_FILE      = ".ronin/last-picker-state.txt"
+TERMINAL_POPUP = "~/.config/scripts/popup_terminal.sh --bottom 0.4"
 
 PREVIEW_CMD    = "--preview 'bat {{1}} --highlight-line {{2}}' --preview-window 'right,+{{2}}+3/3,~3' "
-FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
+FZF_CMD        = (f"fzf --ansi --border -i {PREVIEW_CMD} "
                   f"--delimiter '@' --scrollbar '▍' "
                   f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
                   f"--style=full:line --layout=reverse --print-query")
@@ -34,6 +36,22 @@ GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs sakura --config {TREE
 
 SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
+def run_in_popup(command: str) -> str:
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sh") as tmp:
+        tmp.write("#!/usr/bin/env bash\n")
+        tmp.write(command + "\n")
+        tmp_path = tmp.name
+
+    os.chmod(tmp_path, 0o755)
+    popup_cmd = f"{TERMINAL_POPUP} -- -e {tmp_path}"
+    try:
+        result = subprocess.check_output(popup_cmd, shell=True, universal_newlines=True)
+        return result
+    except Exception:
+        return ""
+    finally:
+        os.unlink(tmp_path)
+    
 def write_state(func: str, *args) -> None:
     os.makedirs(".ronin", exist_ok=True)
     with open(LAST_PICKER_STATE_FILE, "w", encoding="utf-8") as outfile:
@@ -94,7 +112,7 @@ def open_content_picker(query: str = ""):
     cmd = cmd + " --query=" + shlex.quote(query)
     try:
         write_state(open_content_picker.__name__, query)
-        result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+        result = run_in_popup(cmd)
         query_and_files = result.splitlines()
         if any(query_and_files):
             if len(query_and_files) == 1:
@@ -117,7 +135,7 @@ def open_file_picker(query: str = ""):
     cmd = cmd + " --query=" + shlex.quote(query)
     try:
         write_state(open_file_picker.__name__, query)
-        result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+        result = run_in_popup(cmd)
         query_and_files = result.splitlines()
         if any(query_and_files):
             if len(query_and_files) == 1:
@@ -143,7 +161,7 @@ def open_symbol_picker(file: str = "", query: str = ""):
 
     try:
         write_state(open_symbol_picker.__name__, file, query)
-        selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+        selections = run_in_popup(cmd)
         query_and_files = selections.splitlines()
         if any(query_and_files):
             if len(query_and_files) == 1:
@@ -168,7 +186,7 @@ def goto_definition(symbol: str):
     cmd = GOTO_DEFINITION_PICKER_CMD.format(FILE_FILTER_CMD=filter, QUERY_PLACEHOLDER=symbol)
     try:
         write_state(goto_definition.__name__, symbol)
-        selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+        selections = run_in_popup(cmd)
         query_and_files = selections.splitlines()
         if not any(query_and_files):
             show_references(symbol)
@@ -196,7 +214,7 @@ def show_references(symbol: str):
 
     try:
         write_state(show_references.__name__, symbol)
-        selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+        selections = run_in_popup(cmd)
         query_and_files = selections.splitlines()
         if any(query_and_files):
             if len(query_and_files) == 1:
