@@ -38,11 +38,11 @@ install_tool() {
 }
 
 # fzf
-install_tool "fzf" "0.65.1" \
+install_tool "fzf" "0.66.0" \
   "fzf --version" \
   "awk '{print \$1}'" \
-  "https://github.com/junegunn/fzf/releases/download/v0.65.1/fzf-0.65.1-linux_amd64.tar.gz" \
-  "fzf-0.65.1-linux_amd64.tar.gz" \
+  "https://github.com/junegunn/fzf/releases/download/v0.66.0/fzf-0.66.0-linux_amd64.tar.gz" \
+  "fzf-0.66.0-linux_amd64.tar.gz" \
   "fzf"
 
 # bat
@@ -91,5 +91,8 @@ install_tool "sakura" "25.10.1" \
   "sakura-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
   "sakura"
 
-echo "Installing moreutils"
-sudo apt install moreutils
+# moreutils
+if ! dpkg -s moreutils >/dev/null 2>&1; then
+  echo "Installing moreutils"
+  sudo apt install -y moreutils
+fi

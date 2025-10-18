@@ -7,17 +7,20 @@
 "constructor"               = { fg = "light_yellow"                            }
 "function"                  = { fg = "light_yellow"                            }
 "function.builtin"          = { fg = "light_yellow"                            }
-"function.macro"            = { fg = "red"                                     }
-"preproc_ifdef"             = { fg = "red"                                     }
-"keyword"                   = { fg = "red"                                     }
+"function.macro"            = { fg = "light_yellow"                            }
+"preproc_ifdef"             = { fg = "light_yellow"                            }
+"keyword"                   = { fg = "white"                                   }
 "keyword.control"           = { fg = "red"                                     }
 "keyword.control.import"    = { fg = "red"                                     }
-"keyword.directive"         = { fg = "red"                                     }
-"label"                     = { fg = "red"                                     }
-"namespace"                 = { fg = "red"                                     }
-"operator"                  = { fg = "cyan"                                    }
-"keyword.operator"          = { fg = "cyan"                                    }
-"special"                   = { fg = "light_yellow"                            }
+"keyword.control.exception" = { fg = "red"                                     }
+"keyword.operator"          = { fg = "red"                                     }
+"keyword.control.return"    = { fg = "lightsalmon", modifiers=["underlined"]   }
+"keyword.directive"         = { fg = "white"                                   }
+"keyword.storage.modifier"  = { fg = "red"                                     }
+"label"                     = { fg = "white"                                   }
+"namespace"                 = { fg = "white"                                   }
+"operator"                  = { fg = "red"                                     }
+"special"                   = { fg = "white"                                   }
 "string"                    = { fg = "green"                                   }
 "type"                      = { fg = "cyan"                                    }
 "variable.builtin"          = { fg = "red"                                     }
@@ -26,15 +29,15 @@
 "variable.other.enummember" = { fg = "red"                                     }
 "variable"                  = { fg = "white"                                   }
 "punctuation"               = { fg = "white"                                   }
-"punctuation.special"       = { fg = "white"                                   }
+"punctuation.special"       = { fg = "red"                                     }
 
 "markup.heading"            = { fg = "red"   , modifiers = ["bold"]            }
 "markup.raw.inline"         = { fg = "green"                                   }
 "markup.raw.block"          = { fg = "white"                                   }
 "markup.bold"               = { fg = "gold"  , modifiers = ["bold"]            }
-"markup.italic"             = { fg = "purple", modifiers = ["italic"]          }
+"markup.italic"             = { fg = "gold", modifiers = ["italic"]            }
 "markup.strikethrough"      = { fg = "white" , modifiers = ["crossed_out"]     }
-"markup.list"               = { fg = "moss_green"                              }
+"markup.list"               = { fg = "white"                                   }
 "markup.quote"              = { fg = "cyan"                                    }
 "markup.link.url"           = { fg = "cyan"  , modifiers = ["underlined"]      }
 "markup.link.text"          = { fg = "gold"                                    }
@@ -83,10 +86,12 @@
 light_yellow = "#ffce78"
 red          = "#ff8665"
 green        = "#8EC87C"
-cyan         = "#80bdb0"
+cyan         = "#65B0B2"
 white        = "#bfbfbf"
 dark         = "#252524"
 moss_green   = "#58865A"
 black        = "#16181A"
 light_gray   = "#636C6E"
 gold         = "#D19A66"
+navajowhite  = "#ffdead"
+lightsalmon  = "#ffa07a"
