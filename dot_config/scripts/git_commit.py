@@ -6,6 +6,7 @@
 # ///
 
 import subprocess
+import socket
 import os
 
 FZF_ESC_RET_CODE   = 130
@@ -14,7 +15,8 @@ REPO_SCRIPT        = os.path.join(SCRIPT_DIR, "git_repo_list.py")
 LOG_SCRIPT         = os.path.join(SCRIPT_DIR, "git_log.py")
 STATUS_SCRIPT      = os.path.join(SCRIPT_DIR, "lib/git_status.py")
 COMMIT_ACTIONS     = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
-TMUX_POPUP         = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
+# TMUX_POPUP         = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
+TMUX_POPUP         = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
 GIT_STATUS_COMMAND = f"uv run {STATUS_SCRIPT}"
 PREFIX_EXTRACTION  = "$(echo {} | cut -c1) "
 FILE_EXTRACTION    = "$(echo {} | cut -c3-) "
@@ -40,10 +42,27 @@ PATCH_COMMAND = (
     "esac"
 )
 
+def get_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+def is_git_repo() -> bool:
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
 class StatusPage:
-    def __init__(self):
+    def __init__(self, port: int):
         self._base_command = (
-            f"{GIT_STATUS_COMMAND} | fzf --ansi --preview-window=right:70% --reverse --cycle "
+            f"{GIT_STATUS_COMMAND} | fzf --listen {port} --ansi --preview-window=right:70% --reverse --cycle "
             f"{PREVIEW_COMMAND} --footer='Git Status' "
             f"--bind 'alt-s:execute-silent(git add {FILE_EXTRACTION})+reload-sync({GIT_STATUS_COMMAND})+down' "
             f"--bind 'alt-S:execute-silent(git add -u)+reload-sync({GIT_STATUS_COMMAND})' "
@@ -72,4 +91,8 @@ class StatusPage:
         return False
 
 if __name__ == "__main__":
-    StatusPage().run()
+    if not is_git_repo():
+        print("[ERROR] Not inside a Git repository.")
+        exit(1)
+    free_port = get_free_port()
+    StatusPage(port=free_port).run()

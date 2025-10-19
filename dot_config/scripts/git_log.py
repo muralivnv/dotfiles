@@ -8,6 +8,7 @@
 import subprocess
 from typing import Optional, Tuple
 from argparse import ArgumentParser
+import socket
 import os
 
 DELIMITER               = "@"
@@ -23,7 +24,8 @@ COMMIT_EXTRACT_COMMAND  = r'gai -r "#^\d+@(?:.*)\*\s+([a-z0-9]{4,}).*#\$1#"'
 GIT_BRANCH_BASE_COMMAND = fr'uv run {GIT_BRANCH_SCRIPT} | gai -f "\w" -v -d {DELIMITER}'
 GIT_LOG_BASE_COMMAND    = (r'git log --oneline --graph --decorate --color '
                            r'--pretty=format:"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s"')
-TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
+# TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
+TMUX_POPUP              = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
 
 def get_selected_line(selection: str) -> Optional[int]:
     items = selection.split(DELIMITER)
@@ -34,10 +36,16 @@ def get_selected_line(selection: str) -> Optional[int]:
         pass
     return None
 
+def get_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
 class BranchPage:
-    def __init__(self):
+    def __init__(self, port: int):
+        reload_cmd: str = f'curl -XPOST localhost:{port} -d "reload({GIT_BRANCH_BASE_COMMAND})" '
         self._vis_command: str = ( f" | "
-                                   f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} "
+                                   f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} "
                                    f"$(echo {{}} | {BRANCH_EXTRACT_COMMAND}) ' --preview-window=bottom:70% "
                                    f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} checkout_branch {{}})' "
                                    f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} reset_branch {{}})' "
@@ -79,10 +87,10 @@ class BranchPage:
         return None
 
 class LogPage:
-    def __init__(self, log_limit: int):
+    def __init__(self, log_limit: int, port:int):
         self._base_command: str = GIT_LOG_BASE_COMMAND + f" -n{log_limit} "
         self._vis_command: str  = (f" | gai -f \"\\w\" -v -d {DELIMITER} | "
-                                   f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
+                                   f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
                                    f"--preview 'echo {{}} | {COMMIT_EXTRACT_COMMAND} | xargs git show | bat --color=always --language=Diff ' "
                                    "--preview-window=bottom:70% "
                                    f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} checkout_commit {{}})' "
@@ -126,10 +134,10 @@ class LogPage:
         return None
 
 class DiffPage:
-    def __init__(self):
+    def __init__(self, port:int):
         self._base_command: str = "git show --pretty= --name-only "
         self._vis_command: str = (f" | gai -f \"\\w\" -v -d {DELIMITER} | "
-                                  f"fzf --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
+                                  f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
                                   "--preview-window=bottom:70% ")
         self._last_selected_line: int = 0
 
@@ -161,9 +169,10 @@ if __name__ == "__main__":
     cli_args.add_argument("-n", help="log limit", required=False, type=int, default=100, dest="n")
     parsed_args, _ = cli_args.parse_known_args()
 
-    tab0 = BranchPage()
-    tab1 = LogPage(parsed_args.n)
-    tab2 = DiffPage()
+    free_port = get_free_port()
+    tab0 = BranchPage(port=free_port)
+    tab1 = LogPage(parsed_args.n, port=free_port)
+    tab2 = DiffPage(port=free_port)
 
     payloads = dict(
         tab0=tab0,
