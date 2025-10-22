@@ -13,26 +13,39 @@ import shlex
 from argparse import ArgumentParser
 from typing import Optional, List
 import traceback
+from pathlib import Path
 
-FILE_FILTER_CMD_FILE        = ".ronin/file-filter.txt"
-TREESITTER_TAGS_CONFIG_FILE = ".ronin/treesitter-tags.txt"
+FILE_FILTER_FILE = Path(".ronin/file-filter.txt")
+if not FILE_FILTER_FILE.is_file():
+    FILE_FILTER_FILE = Path.home() / ".config/ronin/file-filter.txt"
+    if not FILE_FILTER_FILE:
+        raise FileNotFoundError("config 'file-filter.txt' not found")
+
+FILE_FILTER_CMD = f"bash {FILE_FILTER_FILE}"
+
+TREESITTER_TAGS_CONFIG_FILE = Path(".ronin/treesitter-tags.txt")
+if not TREESITTER_TAGS_CONFIG_FILE.is_file():
+    TREESITTER_TAGS_CONFIG_FILE = Path.home() / ".config/ronin/treesitter-tags.txt"
+    if not TREESITTER_TAGS_CONFIG_FILE:
+        raise FileNotFoundError("config 'treesitter-tags.txt' not found")
+
 LAST_PICKER_STATE_FILE      = ".ronin/last-picker-state.txt"
 
-PREVIEW_CMD    = "--preview 'bat {{1}} --highlight-line {{2}}' --preview-window 'right,+{{2}}+3/3,~3' "
+PREVIEW_CMD    = "--preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
 FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
                   f"--delimiter '@' --scrollbar '▍' "
                   f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
                   f"--style=full:line --layout=reverse --print-query")
 
-CONTENT_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs gai -f '\\w' -v -d @ --files | {FZF_CMD} --tiebreak=begin"
-FILE_PICKER_CMD    = f"{{FILE_FILTER_CMD}} | gai -r '/(\\S+)/$1@1/' | {FZF_CMD} --nth=1 --tiebreak=pathname"
+CONTENT_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs gai -f '\\w' -v -d @ --files | {FZF_CMD} --tiebreak=begin"
+FILE_PICKER_CMD    = f"{FILE_FILTER_CMD} | gai -r '/(\\S+)/$1@1/' | {FZF_CMD} --nth=1 --tiebreak=pathname"
 
 FILE_SYMBOL_PICKER_CMD     = f"sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
-PROJECT_SYMBOL_PICKER_CMD  = f"{{FILE_FILTER_CMD}} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+PROJECT_SYMBOL_PICKER_CMD  = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
-GOTO_DEFINITION_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
+GOTO_DEFINITION_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
 
-SHOW_REFERENCES_PICKER_CMD = f"{{FILE_FILTER_CMD}} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+SHOW_REFERENCES_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
 def write_state(func: str, *args) -> None:
     os.makedirs(".ronin", exist_ok=True)
@@ -81,17 +94,8 @@ def open_last_picker():
             if data[0] in symbols:
                 symbols[data[0]](*data[1:])
 
-def get_file_filter_cmd() -> Optional[str]:
-    filter = None
-    if os.path.exists(FILE_FILTER_CMD_FILE):
-        with open(FILE_FILTER_CMD_FILE, "r") as infile:
-            filter = infile.read().strip()
-    return filter
-
 def open_content_picker(query: str = ""):
-    filter = get_file_filter_cmd()
-    cmd = CONTENT_PICKER_CMD.format(FILE_FILTER_CMD=filter)
-    cmd = cmd + " --query=" + shlex.quote(query)
+    cmd = CONTENT_PICKER_CMD + " --query=" + shlex.quote(query)
     try:
         write_state(open_content_picker.__name__, query)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
@@ -110,11 +114,7 @@ def open_content_picker(query: str = ""):
         traceback.print_exc()
 
 def open_file_picker(query: str = ""):
-    filter = get_file_filter_cmd()
-    if filter is None:
-        raise FileNotFoundError(f"File {FILE_FILTER_CMD_FILE} do not exist")
-    cmd = FILE_PICKER_CMD.format(FILE_FILTER_CMD=filter)
-    cmd = cmd + " --query=" + shlex.quote(query)
+    cmd = FILE_PICKER_CMD + " --query=" + shlex.quote(query)
     try:
         write_state(open_file_picker.__name__, query)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
@@ -133,14 +133,11 @@ def open_file_picker(query: str = ""):
         traceback.print_exc()
 
 def open_symbol_picker(file: str = "", query: str = ""):
-    filter = get_file_filter_cmd()
-    if filter is None:
-        raise FileNotFoundError(f"File {FILE_FILTER_CMD_FILE} do not exist")
     if file == "":
-        cmd = PROJECT_SYMBOL_PICKER_CMD.format(FILE_FILTER_CMD=filter, QUERY_PLACEHOLDER=shlex.quote(query))
+        cmd = PROJECT_SYMBOL_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", shlex.quote(query))
     else:
-        cmd = FILE_SYMBOL_PICKER_CMD.format(FILE_PLACEHOLDER=file, QUERY_PLACEHOLDER=shlex.quote(query))
-
+        cmd = FILE_SYMBOL_PICKER_CMD.replace("{FILE_PLACEHOLDER}", file) \
+                                    .replace("{QUERY_PLACEHOLDER}", shlex.quote(query))
     try:
         write_state(open_symbol_picker.__name__, file, query)
         selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
@@ -161,11 +158,7 @@ def open_symbol_picker(file: str = "", query: str = ""):
 def goto_definition(symbol: str):
     if not symbol:
         return
-
-    filter = get_file_filter_cmd()
-    if filter is None:
-        raise FileNotFoundError(f"File {FILE_FILTER_CMD_FILE} do not exist")
-    cmd = GOTO_DEFINITION_PICKER_CMD.format(FILE_FILTER_CMD=filter, QUERY_PLACEHOLDER=symbol)
+    cmd = GOTO_DEFINITION_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", symbol)
     try:
         write_state(goto_definition.__name__, symbol)
         selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
@@ -189,11 +182,7 @@ def show_references(symbol: str):
     if not symbol:
         return
 
-    filter = get_file_filter_cmd()
-    if filter is None:
-        raise FileNotFoundError(f"File {FILE_FILTER_CMD_FILE} do not exist")
-    cmd = SHOW_REFERENCES_PICKER_CMD.format(FILE_FILTER_CMD=filter, QUERY_PLACEHOLDER=symbol)
-
+    cmd = SHOW_REFERENCES_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", symbol)
     try:
         write_state(show_references.__name__, symbol)
         selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
