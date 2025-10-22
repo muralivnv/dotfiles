@@ -31,7 +31,7 @@ def _run_editable_command(initial_cmd: str) -> None:
     if not user_cmd.strip():
         return
     try:
-        run(user_cmd, shell=True, check=True)
+        run(f"{user_cmd} | less -XR", shell=True, check=True)
     except CalledProcessError as e:
         print("\nCommand failed.")
         print(e)
