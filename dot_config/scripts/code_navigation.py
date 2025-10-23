@@ -94,10 +94,9 @@ def open_last_picker():
             if data[0] in symbols:
                 symbols[data[0]](*data[1:])
 
-def open_content_picker(query: str = ""):
-    cmd = CONTENT_PICKER_CMD + " --query=" + shlex.quote(query)
+def execute(name: str, cmd: str, query: str, *rest) -> None:
     try:
-        write_state(open_content_picker.__name__, query)
+        write_state(name, query, *rest)
         result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
         query_and_files = result.splitlines()
         if any(query_and_files):
@@ -107,101 +106,42 @@ def open_content_picker(query: str = ""):
             else:
                 query = query_and_files[0]
                 files = query_and_files[1:]
-            write_state(open_content_picker.__name__, query)
+            write_state(name, query, *rest)
             file_line_col = to_file_line_col(files)
             open_files_in_editor(file_line_col)
     except Exception:
         traceback.print_exc()
+
+def open_content_picker(query: str = ""):
+    cmd = CONTENT_PICKER_CMD + " --query=" + shlex.quote(query)
+    execute(open_content_picker.__name__, cmd, query)
 
 def open_file_picker(query: str = ""):
     cmd = FILE_PICKER_CMD + " --query=" + shlex.quote(query)
-    try:
-        write_state(open_file_picker.__name__, query)
-        result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
-        query_and_files = result.splitlines()
-        if any(query_and_files):
-            if len(query_and_files) == 1:
-                query = ""
-                files = query_and_files[0]
-            else:
-                query = query_and_files[0]
-                files = query_and_files[1:]
-            write_state(open_file_picker.__name__, query)
-            file_line_col = to_file_line_col(files)
-            open_files_in_editor(file_line_col)
-    except Exception:
-        traceback.print_exc()
+    execute(open_file_picker.__name__, cmd, query)
 
-def open_symbol_picker(file: str = "", query: str = ""):
+def open_symbol_picker(query: str = "", file: str = ""):
     if file == "":
         cmd = PROJECT_SYMBOL_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", shlex.quote(query))
     else:
         cmd = FILE_SYMBOL_PICKER_CMD.replace("{FILE_PLACEHOLDER}", file) \
                                     .replace("{QUERY_PLACEHOLDER}", shlex.quote(query))
-    try:
-        write_state(open_symbol_picker.__name__, file, query)
-        selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
-        query_and_files = selections.splitlines()
-        if any(query_and_files):
-            if len(query_and_files) == 1:
-                query = ""
-                files = query_and_files[0]
-            else:
-                query = query_and_files[0]
-                files = query_and_files[1:]
-            write_state(open_symbol_picker.__name__, file, query)
-            file_line_col = to_file_line_col(files)
-            open_files_in_editor(file_line_col)
-    except Exception:
-        traceback.print_exc()
+    execute(open_symbol_picker.__name__, cmd, query, file)
 
 def goto_definition(symbol: str):
     if not symbol:
         return
     cmd = GOTO_DEFINITION_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", symbol)
-    try:
-        write_state(goto_definition.__name__, symbol)
-        selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
-        query_and_files = selections.splitlines()
-        if not any(query_and_files):
-            show_references(symbol)
-        else:
-            if len(query_and_files) == 1:
-                query = ""
-                files = query_and_files[0]
-            else:
-                query = query_and_files[0]
-                files = query_and_files[1:]
-            write_state(goto_definition.__name__, query)
-            file_line_col = to_file_line_col(files)
-            open_files_in_editor(file_line_col)
-    except Exception:
-        traceback.print_exc()
+    execute(goto_definition.__name__, cmd, symbol)
 
 def show_references(symbol: str):
     if not symbol:
         return
-
     cmd = SHOW_REFERENCES_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", symbol)
-    try:
-        write_state(show_references.__name__, symbol)
-        selections = subprocess.check_output(cmd, shell=True, universal_newlines=True)
-        query_and_files = selections.splitlines()
-        if any(query_and_files):
-            if len(query_and_files) == 1:
-                query = ""
-                files = query_and_files[0]
-            else:
-                query = query_and_files[0]
-                files = query_and_files[1:]
-            write_state(show_references.__name__, query)
-            file_line_col = to_file_line_col(files)
-            open_files_in_editor(file_line_col)
-    except Exception:
-        traceback.print_exc()
+    execute(show_references.__name__, cmd, symbol)
 
 if __name__ == "__main__":
-    cli_args = ArgumentParser(description="Code navigation using FZF, Jack and Treesitter")
+    cli_args = ArgumentParser(description="Code navigation using FZF, Gai and Sakura")
     cli_args.add_argument("--open-last-picker", action="store_true", default=False, dest="open_last_picker")
     cli_args.add_argument("--open-file-picker", action="store_true", default=False, dest="open_file_picker")
     cli_args.add_argument("--open-content-picker", action="store_true", default=False, dest="open_content_picker")
@@ -222,7 +162,7 @@ if __name__ == "__main__":
     elif args.open_content_picker:
         open_content_picker()
     elif args.open_symbol_picker:
-        open_symbol_picker(args.file)
+        open_symbol_picker(file=args.file)
     elif args.goto_definition:
         goto_definition(args.symbol)
     elif args.show_references:
