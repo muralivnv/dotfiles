@@ -37,58 +37,66 @@ install_tool() {
   fi
 }
 
+FZF_VERSION="0.66.1"
+BAT_VERSION="0.26.0"
+ZOXIDE_VERSION="0.9.8"
+STARSHIP_VERSION="1.24.0"
+PASTEL_VERSION="0.11.0"
+GAI_VERSION="25.10.2"
+SAKURA_VERSION="25.10.2"
+
 # fzf
-install_tool "fzf" "0.66.0" \
+install_tool "fzf" "$FZF_VERSION" \
   "fzf --version" \
   "awk '{print \$1}'" \
-  "https://github.com/junegunn/fzf/releases/download/v0.66.0/fzf-0.66.0-linux_amd64.tar.gz" \
-  "fzf-0.66.0-linux_amd64.tar.gz" \
+  "https://github.com/junegunn/fzf/releases/download/v$FZF_VERSION/fzf-$FZF_VERSION-linux_amd64.tar.gz" \
+  "fzf-$FZF_VERSION-linux_amd64.tar.gz" \
   "fzf"
 
 # bat
-install_tool "bat" "0.25.0" \
+install_tool "bat" "$BAT_VERSION" \
   "bat --version" \
   "awk '{print \$2}'" \
-  "https://github.com/sharkdp/bat/releases/download/v0.25.0/bat-v0.25.0-x86_64-unknown-linux-musl.tar.gz" \
-  "bat-v0.25.0-x86_64-unknown-linux-musl.tar.gz" \
-  "bat-v0.25.0-x86_64-unknown-linux-musl/bat"
+  "https://github.com/sharkdp/bat/releases/download/v$BAT_VERSION/bat-v$BAT_VERSION-x86_64-unknown-linux-musl.tar.gz" \
+  "bat-v$BAT_VERSION-x86_64-unknown-linux-musl.tar.gz" \
+  "bat-v$BAT_VERSION-x86_64-unknown-linux-musl/bat"
 
 # zoxide
-install_tool "zoxide" "0.9.8" \
+install_tool "zoxide" "$ZOXIDE_VERSION" \
   "zoxide --version" \
   "awk '{print \$2}'" \
-  "https://github.com/ajeetdsouza/zoxide/releases/download/v0.9.8/zoxide-0.9.8-x86_64-unknown-linux-musl.tar.gz" \
-  "zoxide-0.9.8-x86_64-unknown-linux-musl.tar.gz" \
+  "https://github.com/ajeetdsouza/zoxide/releases/download/v$ZOXIDE_VERSION/zoxide-$ZOXIDE_VERSION-x86_64-unknown-linux-musl.tar.gz" \
+  "zoxide-$ZOXIDE_VERSION-x86_64-unknown-linux-musl.tar.gz" \
   "zoxide"
 
 # starship
-install_tool "starship" "1.23.0" \
+install_tool "starship" "$STARSHIP_VERSION" \
   "starship --version" \
   "head -n1 | awk '{print \$2}'" \
-  "https://github.com/starship/starship/releases/download/v1.23.0/starship-x86_64-unknown-linux-musl.tar.gz" \
+  "https://github.com/starship/starship/releases/download/v$STARSHIP_VERSION/starship-x86_64-unknown-linux-musl.tar.gz" \
   "starship-x86_64-unknown-linux-musl.tar.gz" \
   "starship"
 
 # pastel
-install_tool "pastel" "0.10.0" \
+install_tool "pastel" "$PASTEL_VERSION" \
   "pastel --version" \
   "cut -d' ' -f2" \
-  "https://github.com/sharkdp/pastel/releases/download/v0.10.0/pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
-  "pastel-v0.10.0-x86_64-unknown-linux-musl.tar.gz" \
-  "pastel-v0.10.0-x86_64-unknown-linux-musl/pastel"
+  "https://github.com/sharkdp/pastel/releases/download/v$PASTEL_VERSION/pastel-v$PASTEL_VERSION-x86_64-unknown-linux-musl.tar.gz" \
+  "pastel-v$PASTEL_VERSION-x86_64-unknown-linux-musl.tar.gz" \
+  "pastel-v$PASTEL_VERSION-x86_64-unknown-linux-musl/pastel"
 
-install_tool "gai" "25.10.1" \
+install_tool "gai" "$GAI_VERSION" \
   "gai --version" \
   "awk '{print \$0}'" \
-  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10.1/gai-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
-  "gai-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v$GAI_VERSION/gai-v$GAI_VERSION-x86_64-unknown-linux-musl.tar.xz" \
+  "gai-v$GAI_VERSION-x86_64-unknown-linux-musl.tar.xz" \
   "gai"
 
-install_tool "sakura" "25.10.1" \
+install_tool "sakura" "$SAKURA_VERSION" \
   "sakura --version" \
   "awk '{print \$0}'" \
-  "https://github.com/muralivnv/coding_utilities/releases/download/v25.10.1/sakura-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
-  "sakura-v25.10.1-x86_64-unknown-linux-musl.tar.xz" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v$SAKURA_VERSION/sakura-v$SAKURA_VERSION-x86_64-unknown-linux-musl.tar.xz" \
+  "sakura-v$SAKURA_VERSION-x86_64-unknown-linux-musl.tar.xz" \
   "sakura"
 
 # moreutils

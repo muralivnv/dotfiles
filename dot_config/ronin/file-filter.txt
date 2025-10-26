@@ -1,1 +1,1 @@
-find . -type f -printf '%P\n' | gai -e '^(\.|build|appimage|resources|external|\.ronin|\.git)' '(txt|db|spv|png|pgm)$'
+find . -type f -printf '%P\n' | gai -e '^(\.|build|appimage|resources|external|\.ronin|\.git)' '(db|spv|png|pgm)$'
