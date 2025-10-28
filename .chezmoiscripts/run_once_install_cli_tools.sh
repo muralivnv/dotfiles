@@ -14,7 +14,7 @@ install_tool() {
   local extracted_bin_path=$7
 
   local installed_version=""
-  if command -v "$name" > /dev/null; then
+  if command -v "$name" >/dev/null 2>&1; then
     installed_version=$($version_cmd 2>&1 | eval "$version_parse_cmd" || echo "")
   fi
 
@@ -26,9 +26,15 @@ install_tool() {
     tmpdir=$(mktemp -d)
     archive_path="$tmpdir/$archive_name"
 
+    echo "Downloading $name..."
     curl -fsSL "$download_url" -o "$archive_path"
 
-    tar -xf "$archive_path" -C "$tmpdir"
+    echo "Extracting $archive_name..."
+    if [[ "$archive_name" == *.zip ]]; then
+      unzip -q "$archive_path" -d "$tmpdir"
+    else
+      tar -xf "$archive_path" -C "$tmpdir"
+    fi
 
     mv "$tmpdir/$extracted_bin_path" "$INSTALL_DIR/$name"
     chmod +x "$INSTALL_DIR/$name"
@@ -42,10 +48,10 @@ BAT_VERSION="0.26.0"
 ZOXIDE_VERSION="0.9.8"
 STARSHIP_VERSION="1.24.0"
 PASTEL_VERSION="0.11.0"
+YAZI_VERSION="25.5.31"
 GAI_VERSION="25.10.2"
 SAKURA_VERSION="25.10.2"
 
-# fzf
 install_tool "fzf" "$FZF_VERSION" \
   "fzf --version" \
   "awk '{print \$1}'" \
@@ -53,7 +59,6 @@ install_tool "fzf" "$FZF_VERSION" \
   "fzf-$FZF_VERSION-linux_amd64.tar.gz" \
   "fzf"
 
-# bat
 install_tool "bat" "$BAT_VERSION" \
   "bat --version" \
   "awk '{print \$2}'" \
@@ -61,7 +66,6 @@ install_tool "bat" "$BAT_VERSION" \
   "bat-v$BAT_VERSION-x86_64-unknown-linux-musl.tar.gz" \
   "bat-v$BAT_VERSION-x86_64-unknown-linux-musl/bat"
 
-# zoxide
 install_tool "zoxide" "$ZOXIDE_VERSION" \
   "zoxide --version" \
   "awk '{print \$2}'" \
@@ -69,7 +73,6 @@ install_tool "zoxide" "$ZOXIDE_VERSION" \
   "zoxide-$ZOXIDE_VERSION-x86_64-unknown-linux-musl.tar.gz" \
   "zoxide"
 
-# starship
 install_tool "starship" "$STARSHIP_VERSION" \
   "starship --version" \
   "head -n1 | awk '{print \$2}'" \
@@ -77,7 +80,6 @@ install_tool "starship" "$STARSHIP_VERSION" \
   "starship-x86_64-unknown-linux-musl.tar.gz" \
   "starship"
 
-# pastel
 install_tool "pastel" "$PASTEL_VERSION" \
   "pastel --version" \
   "cut -d' ' -f2" \
@@ -85,6 +87,13 @@ install_tool "pastel" "$PASTEL_VERSION" \
   "pastel-v$PASTEL_VERSION-x86_64-unknown-linux-musl.tar.gz" \
   "pastel-v$PASTEL_VERSION-x86_64-unknown-linux-musl/pastel"
 
+install_tool "yazi" "$YAZI_VERSION" \
+  "yazi --version" \
+  "cut -d' ' -f2" \
+  "https://github.com/sxyazi/yazi/releases/download/v$YAZI_VERSION/yazi-x86_64-unknown-linux-musl.zip" \
+  "yazi-x86_64-unknown-linux-musl.zip" \
+  "yazi-x86_64-unknown-linux-musl/yazi"
+  
 install_tool "gai" "$GAI_VERSION" \
   "gai --version" \
   "awk '{print \$0}'" \

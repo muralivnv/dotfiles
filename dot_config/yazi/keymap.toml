@@ -1,0 +1,23 @@
+[mgr]
+prepend_keymap = [
+  { on = ["g", "t"], run = "arrow top",     desc = "Go to top"                          },
+  { on = ["g", "b"], run = "arrow bot",     desc = "Go to bottom"                       },
+  { on = "i",        run = "arrow prev",    desc = "Up"                                 },
+  { on = "<S-i>",    run = "seek -5",       desc = "Seek up 5 units in preview window"  },
+  { on = "<S-k>",    run = "seek 5",        desc = "Seek down 5 units in preview window"},
+  { on = "k",        run = "arrow next",    desc = "Down"                               },
+  { on = "l",        run = "enter"                                                      },
+  { on = "j",        run = "leave"                                                      },
+  { on = "x",        run = ["toggle", "arrow next"]                                     },
+  { on = "<A-x>",    run = ["toggle", "arrow prev"]                                     },
+  { on = "X",        run = "toggle_all"                                                 },
+  { on = "<C-c>",    run = "yank"                                                       },
+  { on = "<C-x>",    run = "yank --cut"                                                 },
+  { on = "<S-c>",    run = "unyank"                                                     },
+  { on = "<C-v>",    run = "paste"                                                      },
+  { on = ["c", "D"], run = "create --dir", "desc" = "Create directories"                },
+  { on = ["c", "F"], run = "create", "      desc" = "Create file with directories"      },
+  { on = ["\\"],     run = "tab_create"                                                 },
+  { on = "<C-q>",    run = "close"                                                      },
+  { on = "Z",        run = "plugin zoxide"                                              },
+]

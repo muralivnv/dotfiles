@@ -28,6 +28,7 @@ alias gf="git fetch --all"
 alias gp="git pull --rebase"
 alias gP="git push"
 alias gPf="git push --force-with-lease"
+alias yz="yazi"
 export EDITOR=hx
 export GIT_EDITOR=hx
 export COLORTERM=truecolor
