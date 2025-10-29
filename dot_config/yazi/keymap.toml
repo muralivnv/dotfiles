@@ -3,21 +3,68 @@ prepend_keymap = [
   { on = ["g", "t"], run = "arrow top",     desc = "Go to top"                          },
   { on = ["g", "b"], run = "arrow bot",     desc = "Go to bottom"                       },
   { on = "i",        run = "arrow prev",    desc = "Up"                                 },
-  { on = "<S-i>",    run = "seek -5",       desc = "Seek up 5 units in preview window"  },
-  { on = "<S-k>",    run = "seek 5",        desc = "Seek down 5 units in preview window"},
+  { on = "I",        run = "arrow -50%",    desc = "Up"                                 },
+  { on = "<A-i>",    run = "seek -5",       desc = "Seek up 5 units in preview window"  },
+  { on = "<A-k>",    run = "seek 5",        desc = "Seek down 5 units in preview window"},
   { on = "k",        run = "arrow next",    desc = "Down"                               },
-  { on = "l",        run = "enter"                                                      },
+  { on = "K",        run = "arrow 50%",     desc = "Down"                               },
+  { on = "l",        run = "plugin smart-enter"                                         },
   { on = "j",        run = "leave"                                                      },
   { on = "x",        run = ["toggle", "arrow next"]                                     },
   { on = "<A-x>",    run = ["toggle", "arrow prev"]                                     },
-  { on = "X",        run = "toggle_all"                                                 },
+  { on = "%",        run = "toggle_all"                                                 },
   { on = "<C-c>",    run = "yank"                                                       },
   { on = "<C-x>",    run = "yank --cut"                                                 },
   { on = "<S-c>",    run = "unyank"                                                     },
   { on = "<C-v>",    run = "paste"                                                      },
-  { on = ["c", "D"], run = "create --dir", "desc" = "Create directories"                },
-  { on = ["c", "F"], run = "create", "      desc" = "Create file with directories"      },
-  { on = ["\\"],     run = "tab_create"                                                 },
   { on = "<C-q>",    run = "close"                                                      },
-  { on = "Z",        run = "plugin zoxide"                                              },
+  { on = "z",        run = "plugin zoxide-jump"                                         },
+  { on = "Z",        run = "plugin interactive-cd"                                      },
+  { on = "s",        run = "plugin relative-motions"                                    },
+  { on = "1",        run = "plugin relative-motions 1"                                  },
+  { on = "2",        run = "plugin relative-motions 2"                                  },
+  { on = "3",        run = "plugin relative-motions 3"                                  },
+  { on = "4",        run = "plugin relative-motions 4"                                  },
+  { on = "5",        run = "plugin relative-motions 5"                                  },
+  { on = "6",        run = "plugin relative-motions 6"                                  },
+  { on = "7",        run = "plugin relative-motions 7"                                  },
+  { on = "8",        run = "plugin relative-motions 8"                                  },
+  { on = "9",        run = "plugin relative-motions 9"                                  },
+  { on = "!",        run = 'shell "$SHELL" --block --confirm'                           }
 ]
+
+[tasks]
+prepend_keymap = [
+  { on = "k", run = "arrow next" },
+  { on = "i", run = "arrow prev" }
+]
+
+[spot]
+prepend_keymap = [
+  { on = "i", run = "arrow prev" },
+  { on = "k", run = "arrow next" },
+  { on = "j", run = "swipe prev" },
+  { on = "l", run = "swipe next" }
+]
+
+[input]
+prepend_keymap = [
+  { on = "<Esc>", run = "close" }
+]
+
+[confirm]
+prepend_keymap = [
+  { on = "i", run = "arrow prev" },
+  { on = "k", run = "arrow next" },
+  { on = "I", run = "arrow -50%" },
+  { on = "K", run = "arrow 50%"  }
+]
+
+[help]
+prepend_keymap = [
+  { on = "i", run = "arrow prev" },
+  { on = "k", run = "arrow next" },
+  { on = "I", run = "arrow -50%" },
+  { on = "K", run = "arrow 50%"  }
+]
+
