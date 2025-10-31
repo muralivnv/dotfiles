@@ -19,7 +19,6 @@ prepend_keymap = [
   { on = "<C-v>",    run = "paste"                                                      },
   { on = "<C-q>",    run = "close"                                                      },
   { on = "z",        run = "plugin zoxide-jump"                                         },
-  { on = "Z",        run = "plugin interactive-cd"                                      },
   { on = "s",        run = "plugin relative-motions"                                    },
   { on = "1",        run = "plugin relative-motions 1"                                  },
   { on = "2",        run = "plugin relative-motions 2"                                  },
