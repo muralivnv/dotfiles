@@ -29,7 +29,8 @@ prepend_keymap = [
   { on = "7",        run = "plugin relative-motions 7"                                  },
   { on = "8",        run = "plugin relative-motions 8"                                  },
   { on = "9",        run = "plugin relative-motions 9"                                  },
-  { on = "!",        run = 'shell "$SHELL" --block --confirm'                           }
+  { on = "!",        run = 'shell "$SHELL" --block --confirm'                           },
+  { on = "M",        run = "plugin mount"}
 ]
 
 [tasks]
