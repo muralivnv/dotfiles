@@ -9,7 +9,7 @@ local MOTIONS_AND_OP_KEYS = {
 	{ on = "t" }, { on = "L" }, { on = "H" }, { on = "w" },
 	{ on = "W" }, { on = "<" }, { on = ">" }, { on = "~" },
 	-- movement
-	{ on = "g" }, { on = "j" }, { on = "k" }, { on = "h" }, { on = "l" }, { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" }
+	{ on = "g" }, { on = "i" }, { on = "k" }, { on = "j" }, { on = "l" }, { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" }
 }
 
 -- stylua: ignore
@@ -17,7 +17,7 @@ local MOTION_KEYS = {
 	{ on = "0" }, { on = "1" }, { on = "2" }, { on = "3" }, { on = "4" },
 	{ on = "5" }, { on = "6" }, { on = "7" }, { on = "8" }, { on = "9" },
 	-- movement
-	{ on = "g" }, { on = "i" }, { on = "k" }, { on = "h" }, { on = "l" }, { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" }
+	{ on = "g" }, { on = "i" }, { on = "k" }, { on = "j" }, { on = "l" }, { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" }
 }
 
 -- stylua: ignore
