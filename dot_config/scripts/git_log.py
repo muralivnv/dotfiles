@@ -9,16 +9,17 @@ import subprocess
 from typing import Optional, Tuple
 from argparse import ArgumentParser
 import socket
-import os
+from pathlib import Path
 
 DELIMITER               = "@"
 FZF_ESC_RET_CODE        = 130
-SCRIPT_DIR              = os.path.dirname(os.path.abspath(__file__))
-REPO_SCRIPT             = os.path.join(SCRIPT_DIR, "git_repo_list.py")
-COMMIT_SCRIPT           = os.path.join(SCRIPT_DIR, "git_commit.py")
-GIT_BRANCH_SCRIPT       = os.path.join(SCRIPT_DIR, "lib/git_branch.py")
-BRANCH_ACTIONS          = os.path.join(SCRIPT_DIR, "lib/branch_actions.py")
-COMMIT_ACTIONS          = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
+SCRIPT_DIR              = Path(__file__).resolve().parent
+REPO_SCRIPT             = SCRIPT_DIR / "git_repo_list.py"
+COMMIT_SCRIPT           = SCRIPT_DIR / "git_commit.py"
+GIT_BRANCH_SCRIPT       = SCRIPT_DIR / "lib/git_branch.py"
+BRANCH_ACTIONS          = SCRIPT_DIR / "lib/branch_actions.py"
+COMMIT_ACTIONS          = SCRIPT_DIR / "lib/commit_actions.py"
+
 BRANCH_EXTRACT_COMMAND  = r'gai -r "#^\d+@([A-Za-z0-9._\/-]+).*#\$1#"'
 COMMIT_EXTRACT_COMMAND  = r'gai -r "#^\d+@(?:.*)\*\s+([a-z0-9]{4,}).*#\$1#"'
 GIT_BRANCH_BASE_COMMAND = fr'uv run {GIT_BRANCH_SCRIPT} | gai -f "\w" -v -d {DELIMITER}'
@@ -123,7 +124,7 @@ class LogPage:
             vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' " +\
                       f"--header 'Branch: {branch}' " + \
                       f"--bind 'alt-g:reload-sync({log_cmd} | gai -f \"\\w\" -v -d {DELIMITER})+bg-transform-header(Branch: {branch})' "
-                      
+
             output = subprocess.check_output(log_cmd + vis_cmd, shell=True, universal_newlines=True)
             selected_line = get_selected_line(output)
             if selected_line is not None:

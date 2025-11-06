@@ -7,14 +7,14 @@
 
 import subprocess
 import socket
-import os
+from pathlib import Path
 
 FZF_ESC_RET_CODE   = 130
-SCRIPT_DIR         = os.path.dirname(os.path.abspath(__file__))
-REPO_SCRIPT        = os.path.join(SCRIPT_DIR, "git_repo_list.py")
-LOG_SCRIPT         = os.path.join(SCRIPT_DIR, "git_log.py")
-STATUS_SCRIPT      = os.path.join(SCRIPT_DIR, "lib/git_status.py")
-COMMIT_ACTIONS     = os.path.join(SCRIPT_DIR, "lib/commit_actions.py")
+SCRIPT_DIR         = Path(__file__).resolve().parent
+REPO_SCRIPT        = SCRIPT_DIR / "git_repo_list.py"
+LOG_SCRIPT         = SCRIPT_DIR / "git_log.py"
+STATUS_SCRIPT      = SCRIPT_DIR / "lib/git_status.py"
+COMMIT_ACTIONS     = SCRIPT_DIR / "lib/commit_actions.py"
 TMUX_POPUP         = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
 TMUX_PANE          = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
 GIT_STATUS_COMMAND = f"uv run {STATUS_SCRIPT}"

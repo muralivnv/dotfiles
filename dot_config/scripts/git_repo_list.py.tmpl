@@ -6,7 +6,7 @@
 # ///
 
 import subprocess
-import os
+from pathlib import Path
 import shlex
 
 {{- if or (not .git_repo_list) (eq (len .git_repo_list) 0) -}}
@@ -15,11 +15,11 @@ import shlex
 
 DEV_FOLDERS = [
     {{- range .git_repo_list }}
-        {{ printf "%q" . }},
+        Path({{ printf "%q" . }}),
     {{- end }}
 ]
 
-REPOS = {os.path.basename(d): d for d in DEV_FOLDERS}
+REPOS = {d.name: d for d in DEV_FOLDERS}
 SCRIPT_DIR = "{{ dir .chezmoi.targetFile }}"
 
 CMD = "fzf --delimiter \"@\" --reverse "\

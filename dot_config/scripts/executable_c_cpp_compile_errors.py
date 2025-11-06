@@ -7,7 +7,7 @@
 
 import subprocess
 import sys
-import os
+from pathlib import Path
 from argparse import ArgumentParser
 from typing import List, Dict, Set, Tuple, Optional
 import json
@@ -16,8 +16,8 @@ from concurrent.futures import as_completed, ThreadPoolExecutor
 import hashlib
 import shlex
 
-ERRORS_CACHE_FOLDER = ".ronin/c_cpp_compile_errors"
-ERRORS_STATE_FILE = os.path.join(ERRORS_CACHE_FOLDER, "state.json")
+ERRORS_CACHE_FOLDER = Path(".ronin/c_cpp_compile_errors")
+ERRORS_STATE_FILE   = ERRORS_CACHE_FOLDER / "state.json"
 
 type ContentHash = str
 type PathHash = str
@@ -62,12 +62,14 @@ def remove_object_file(cmd: str) -> List[str]:
 
 def get_commands_of_interest(compile_commands_path: str, path_prefix: str, cxx: Optional[str],
                              analysis_flags: List[str]) -> Dict[str, CompileCommand]:
+    prefix = Path(path_prefix)
     commands = None
     with open(compile_commands_path, "r", encoding="utf8") as infile:
         commands = json.load(infile)
     out = {}
     for c in commands:
-        if os.path.exists(c["file"]) and c["file"].startswith(path_prefix):
+        file = Path(c["file"])
+        if file.exists() and file.is_relative_to(prefix):
             out[c["file"]] = CompileCommand(file=c["file"],
                                             command=remove_object_file(c["command"]))
             out[c["file"]].command.extend(analysis_flags)
@@ -89,8 +91,8 @@ def get_file_content_hash(file: str) -> str:
     return h.hexdigest()
 
 def read_cache(cmd: CompileCommand) -> List[str]:
-    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{cmd.path_hash}.errors")
-    if not os.path.exists(cache_file):
+    cache_file = ERRORS_CACHE_FOLDER / f"{cmd.path_hash}.errors"
+    if not cache_file.exists():
         return []
     errors = []
     with open(cache_file, "r", encoding="utf8") as infile:
@@ -98,7 +100,7 @@ def read_cache(cmd: CompileCommand) -> List[str]:
     return errors
 
 def run_cmd(cmd: CompileCommand) -> Set[str]:
-    cache_file = os.path.join(ERRORS_CACHE_FOLDER, f"{cmd.path_hash}.errors")
+    cache_file = ERRORS_CACHE_FOLDER / f"{cmd.path_hash}.errors"
     process = subprocess.Popen(cmd.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     _, stderr_data = process.communicate()
 
@@ -154,7 +156,7 @@ def get_deps(existing_deps: Set[str], cmds: Dict[str, CompileCommand],
     return cmd_deps, new_unique_deps
 
 def load_or_initialize_state(ignore_cache: bool = False) -> State:
-    if (not ignore_cache) and os.path.exists(ERRORS_STATE_FILE):
+    if (not ignore_cache) and ERRORS_STATE_FILE.exists():
         with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
             try:
                 return State.from_dict(json.load(infile))
@@ -196,15 +198,15 @@ def split_commands(cmds: Dict[str, CompileCommand], cmd_deps: Dict[str, Set[str]
 def get_existing_deps(state: State, path_prefix: str,
                       dep_exts: Tuple[str, ...] = (".h", ".hpp", ".hxx", ".hh"),
                       exclude_dirs: Tuple[str, ...] = ("build")) -> Set[str]:
-    current_deps: Set[str] = set()
-    for root, dirs, files in os.walk(path_prefix):
-        # Modify dirs in-place to skip excluded folders
-        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith(".")]
-
-        for file in files:
-            if file.endswith(dep_exts):
-                full_path = os.path.join(root, file)
-                current_deps.add(os.path.normpath(full_path))
+    current_deps: Set[Path] = set()
+    for file_path in Path(path_prefix).rglob("*"):
+        if file_path.is_dir():
+            # skip excluded dirs
+            if any(part in exclude_dirs or part.startswith(".") for part in file_path.parts):
+                continue
+            continue
+        if file_path.suffix in dep_exts:
+            current_deps.add(str(file_path.resolve()))
     return current_deps
 
 def new_deps_added(deps: Set[str], state: State) -> bool:
@@ -231,10 +233,10 @@ if __name__ == "__main__":
 
     args, _ = parser.parse_known_args()
 
-    if not os.path.exists(args.compile_commands):
+    if not Path(args.compile_commands).exists():
         print (f"[ERROR] File {args.compile_commands} do not exist")
         sys.exit(1)
-    os.makedirs(ERRORS_CACHE_FOLDER, exist_ok=True)
+    ERRORS_CACHE_FOLDER.mkdir(exist_ok=True)
 
     executor = ThreadPoolExecutor(max_workers=args.jobs)
     state = load_or_initialize_state(args.no_cache)

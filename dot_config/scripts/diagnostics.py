@@ -6,7 +6,6 @@
 # ///
 
 import subprocess
-import os
 from pathlib import Path
 import socket
 import shlex
@@ -14,7 +13,7 @@ import hashlib
 from watchfiles import watch, DefaultFilter, Change
 from threading import Thread, Event
 
-DIAGNOSTICS_CMD_FILE = ".ronin/diagnostics.txt"
+DIAGNOSTICS_CMD_FILE = Path(".ronin/diagnostics.txt")
 
 FZF_CMD = (
     "fzf --border -i --preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
@@ -63,11 +62,11 @@ def watch_thread(window_id: str, free_port: int, stop_event: Event):
                       f"tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ffd900]  #[default]\";)" )
     fzf_reload_cmd = shlex.split(FZF_RELOAD_COMMAND.format(FZF_PROC_PORT=free_port, PREPROCESS_CMD=tmux_hourglass))
     try:
-        subprocess.run(fzf_reload_cmd, shell=False, cwd=os.getcwd())
+        subprocess.run(fzf_reload_cmd, shell=False, cwd=Path.cwd())
     except subprocess.SubprocessError as e:
         print(e)
         exit(1)
-    for changes in watch(os.getcwd(), **WATCH_ARGS):
+    for changes in watch(Path.cwd(), **WATCH_ARGS):
         if stop_event.is_set():
             break
         rerun_diagnostics = False
@@ -75,7 +74,7 @@ def watch_thread(window_id: str, free_port: int, stop_event: Event):
             try:
                 if change == Change.deleted:
                     continue
-                if not os.path.exists(file):
+                if not Path(file).exists():
                     continue
                 file_hash = get_file_content_hash(file)
                 if file not in files_state:
@@ -87,14 +86,14 @@ def watch_thread(window_id: str, free_port: int, stop_event: Event):
                 pass
         if rerun_diagnostics:
             try:
-                subprocess.run(fzf_reload_cmd, shell=False, cwd=os.getcwd())
+                subprocess.run(fzf_reload_cmd, shell=False, cwd=Path.cwd())
             except subprocess.SubprocessError as e:
                 print(e)
                 exit(1)
 
 if __name__ == "__main__":
     window_id = get_tmux_window_id()
-    if not os.path.exists(DIAGNOSTICS_CMD_FILE):
+    if not DIAGNOSTICS_CMD_FILE.exists():
         raise FileNotFoundError(f"File {DIAGNOSTICS_CMD_FILE} not found")
 
     free_port = get_free_port()
@@ -113,7 +112,7 @@ if __name__ == "__main__":
                )
     stop_event = Event()
     t = Thread(target=watch_thread, args=(window_id, free_port, stop_event))
-    fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=os.getcwd())
+    fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=Path.cwd())
     t.start()
     fzf_proc.wait()
 

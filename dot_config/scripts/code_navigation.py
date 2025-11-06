@@ -7,7 +7,6 @@
 
 # imports
 import subprocess
-import os
 import re
 import shlex
 from argparse import ArgumentParser
@@ -29,7 +28,7 @@ if not TREESITTER_TAGS_CONFIG_FILE.is_file():
     if not TREESITTER_TAGS_CONFIG_FILE:
         raise FileNotFoundError("config 'treesitter-tags.txt' not found")
 
-LAST_PICKER_STATE_FILE      = ".ronin/last-picker-state.txt"
+LAST_PICKER_STATE_FILE = Path(".ronin/last-picker-state.txt")
 
 PREVIEW_CMD    = "--preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
 FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
@@ -48,7 +47,8 @@ GOTO_DEFINITION_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESI
 SHOW_REFERENCES_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
 
 def write_state(func: str, *args) -> None:
-    os.makedirs(".ronin", exist_ok=True)
+    if not LAST_PICKER_STATE_FILE.exists():
+        LAST_PICKER_STATE_FILE.parent.mkdir(exist_ok=True, parents=True)
     with open(LAST_PICKER_STATE_FILE, "w", encoding="utf-8") as outfile:
         outfile.write(f"{func},{','.join(args)}")
 
@@ -87,7 +87,7 @@ def open_files_in_editor(files: List[str]):
                        shell=True, universal_newlines=True, check=True)
 
 def open_last_picker():
-    if os.path.exists(LAST_PICKER_STATE_FILE):
+    if LAST_PICKER_STATE_FILE.exists():
         with open(LAST_PICKER_STATE_FILE, "r", encoding="utf-8") as infile:
             data = infile.read().split(",")
             symbols = globals()
@@ -142,14 +142,14 @@ def show_references(symbol: str):
 
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Code navigation using FZF, Gai and Sakura")
-    cli_args.add_argument("--open-last-picker", action="store_true", default=False, dest="open_last_picker")
-    cli_args.add_argument("--open-file-picker", action="store_true", default=False, dest="open_file_picker")
+    cli_args.add_argument("--open-last-picker"   , action="store_true", default=False, dest="open_last_picker")
+    cli_args.add_argument("--open-file-picker"   , action="store_true", default=False, dest="open_file_picker")
     cli_args.add_argument("--open-content-picker", action="store_true", default=False, dest="open_content_picker")
-    cli_args.add_argument("--open-symbol-picker", action="store_true", default=False, dest="open_symbol_picker")
-    cli_args.add_argument("--file", type=str, default="", dest="file")
-    cli_args.add_argument("--goto-definition", action="store_true", default=False, dest="goto_definition")
-    cli_args.add_argument("--show-references", action="store_true", default=False, dest="show_references")
-    cli_args.add_argument("--symbol", type=str, default="", dest="symbol")
+    cli_args.add_argument("--open-symbol-picker" , action="store_true", default=False, dest="open_symbol_picker")
+    cli_args.add_argument("--file"               , type=str, default="", dest="file")
+    cli_args.add_argument("--goto-definition"    , action="store_true", default=False, dest="goto_definition")
+    cli_args.add_argument("--show-references"    , action="store_true", default=False, dest="show_references")
+    cli_args.add_argument("--symbol"             , type=str, default="", dest="symbol")
 
     args, _ = cli_args.parse_known_args()
     if (args.goto_definition or args.show_references) and not args.symbol:
