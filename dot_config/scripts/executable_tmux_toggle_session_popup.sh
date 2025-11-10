@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-SESSION="yazi_session"
-CWD="${1:-$PWD}"
+SESSION="${1:-yazi_session}"
+CWD="${2:-$PWD}"
+CMD="${3:-yazi}"
+
 POPUP_HEIGHT="80%"
 POPUP_WIDTH="80%"
 
@@ -21,7 +23,7 @@ fi
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
     tmux new-session -ds "$SESSION" -c "$CWD"
     tmux set -t "$SESSION" status off
-    tmux send-keys -t "$SESSION" "yazi" C-m
+    tmux send-keys -t "$SESSION" "$CMD" C-m
 fi
 
 tmux display-popup -d "$CWD" -h "$POPUP_HEIGHT" -w "$POPUP_WIDTH" -E "tmux attach -t '$SESSION'"
