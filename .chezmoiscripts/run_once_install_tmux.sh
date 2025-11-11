@@ -28,7 +28,7 @@ tar xvzf ncurses.tar.gz
 cd $(find . -maxdepth 1 -type d -name "ncurses-*" -printf '%P\n')
 
 echo "Building ncurses ..."
-./configure --prefix=$TMP_DIR/libs --with-default-terminfo-dir=/usr/share/terminfo --with-terminfo-dirs="/usr/share/terminfo"
+./configure --prefix=$TMP_DIR/libs --with-default-terminfo-dir=/usr/share/terminfo --with-terminfo-dirs="/usr/share/terminfo" --enable-ext-colors --enable-widec --with-ticlib --enable-sixel
 
 make libs
 make install.libs
@@ -49,7 +49,7 @@ git apply 4379.diff
 
 echo "Building tmux ..."
 ./autogen.sh
-./configure --prefix=$HOME/.local/ --enable-static CFLAGS="-I$TMP_DIR/libs/include -I$TMP_DIR/libs/include/ncurses" LDFLAGS="-L$TMP_DIR/libs/lib -L$TMP_DIR/libs/include/ncurses -L$TMP_DIR/libs/include" LIBEVENT_CFLAGS="-I$TMP_DIR/libs/include" LIBEVENT_LIBS="-L$TMP_DIR/libs/lib -levent"
+./configure --prefix=$HOME/.local/ --enable-static CFLAGS="-I$TMP_DIR/libs/include -I$TMP_DIR/libs/include/ncurses" LDFLAGS="-L$TMP_DIR/libs/lib -L$TMP_DIR/libs/include/ncurses -L$TMP_DIR/libs/include" LIBEVENT_CFLAGS="-I$TMP_DIR/libs/include" LIBEVENT_LIBS="-L$TMP_DIR/libs/lib -levent" --enable-sixel
 make
 make install
 echo "Tmux installation complete."
