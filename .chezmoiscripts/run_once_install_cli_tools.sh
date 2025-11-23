@@ -109,7 +109,22 @@ install_tool "sakura" "$SAKURA_VERSION" \
   "sakura"
 
 # moreutils
-if ! dpkg -s moreutils >/dev/null 2>&1; then
-  echo "Installing moreutils"
-  sudo apt install -y moreutils
+if command -v apt >/dev/null 2>&1; then
+    # Ubuntu / Debian
+    if ! dpkg -s moreutils >/dev/null 2>&1; then
+        echo "Installing moreutils (APT)"
+        sudo apt update
+        sudo apt install -y moreutils
+    fi
+
+elif command -v pacman >/dev/null 2>&1; then
+    # Arch / Manjaro
+    if ! pacman -Qi moreutils >/dev/null 2>&1; then
+        echo "Installing moreutils (pacman)"
+        sudo pacman -Sy --noconfirm moreutils
+    fi
+
+else
+    echo "Unsupported distro: no apt or pacman found."
+    exit 1
 fi
