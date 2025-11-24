@@ -8,6 +8,7 @@
 import subprocess
 import socket
 from pathlib import Path
+import os
 
 FZF_ESC_RET_CODE   = 130
 SCRIPT_DIR         = Path(__file__).resolve().parent
@@ -15,8 +16,7 @@ REPO_SCRIPT        = SCRIPT_DIR / "git_repo_list.py"
 LOG_SCRIPT         = SCRIPT_DIR / "git_log.py"
 STATUS_SCRIPT      = SCRIPT_DIR / "lib/git_status.py"
 COMMIT_ACTIONS     = SCRIPT_DIR / "lib/commit_actions.py"
-TMUX_POPUP         = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
-TMUX_PANE          = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
+TERM_PANE          = r'footclient -E --no-wait -D "$(git rev-parse --show-toplevel)" '
 GIT_STATUS_COMMAND = f"uv run {STATUS_SCRIPT}"
 PREFIX_EXTRACTION  = "$(echo {} | cut -c1) "
 FILE_EXTRACTION    = "$(echo {} | cut -c3-) "
@@ -73,17 +73,20 @@ class StatusPage:
             f"--bind 'alt-p:execute({PATCH_COMMAND})+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-g:reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-e:execute($EDITOR {FILE_EXTRACTION})' "
-            f"--bind 'alt-c:execute-silent({TMUX_PANE} uv run {COMMIT_ACTIONS} commit_changes)' "
-            f"--bind 'alt-P:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes)' "
+            f"--bind 'alt-c:execute-silent({TERM_PANE} -e bash -ic \"{COMMIT_ACTIONS} commit_changes\")' "
+            f"--bind 'alt-P:execute-silent({TERM_PANE} -e bash -ic \"{COMMIT_ACTIONS} push_changes\")' "
             f"--bind 'alt-l:become(uv run {LOG_SCRIPT})' "
-            f"--bind 'alt-t:execute-silent({TMUX_PANE})' "
+            f"--bind 'alt-t:execute-silent({TERM_PANE})' "
              "--bind=tab:down,shift-tab:up "
             f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
         )
 
     def run(self):
+        ENV = os.environ.copy()
+        ENV["PATH"] = f"{Path.home()/'.local/bin'}:{ENV['PATH']}"
         try:
-            subprocess.check_output(self._base_command, shell=True, universal_newlines=True)
+            subprocess.check_output(self._base_command, shell=True, universal_newlines=True,
+                                    env=ENV)
             return True
         except subprocess.CalledProcessError as e:
             if e.returncode != FZF_ESC_RET_CODE:

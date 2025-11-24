@@ -24,8 +24,8 @@ export EDITOR=hx
 export GIT_EDITOR=hx
 export COLORTERM=truecolor
 
-# setup zoxide
-eval "$(zoxide init bash)"
-
 # setup starship prompt
 eval "$(starship init bash)"
+
+# setup zoxide
+eval "$(zoxide init bash)"

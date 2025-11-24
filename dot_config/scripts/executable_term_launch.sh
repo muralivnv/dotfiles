@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# Function to get the ID of the currently focused Sway container.
+get_parent_id() {
+    swaymsg -t get_tree | jq -r '
+        recurse(.nodes[], .floating_nodes[]) |
+        select(.focused==true) |
+        .id
+    '
+}
+
+# Check for 'jq' dependency
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' is required to parse swaymsg output." >&2
+    exit 1
+fi
+
+PARENT_WINDOW_ID=$(get_parent_id)
+
+# Build the Command String
+    # All arguments passed to this script are treated as the command to run (e.g., 'bash /path/to/script.sh').
+    # We combine them back into a single quoted string, then append the parent ID.
+
+CMD_TO_EXEC=""
+for arg in "$@"; do
+    CMD_TO_EXEC+="\"${arg}\" "
+done
+
+footclient -E --no-wait -D "$(pwd)" -e bash -ic "${CMD_TO_EXEC} --parent-id ${PARENT_WINDOW_ID}"

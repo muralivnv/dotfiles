@@ -13,6 +13,7 @@ from argparse import ArgumentParser
 from typing import Optional, List
 import traceback
 from pathlib import Path
+import os
 
 FILE_FILTER_FILE = Path(".ronin/file-filter.txt")
 if not FILE_FILTER_FILE.is_file():
@@ -31,7 +32,7 @@ if not TREESITTER_TAGS_CONFIG_FILE.is_file():
 LAST_PICKER_STATE_FILE = Path(".ronin/last-picker-state.txt")
 
 PREVIEW_CMD    = "--preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
-FZF_CMD        = (f"fzf --tmux bottom,40% --ansi --border -i {PREVIEW_CMD} "
+FZF_CMD        = (f"fzf --ansi --border -i {PREVIEW_CMD} "
                   f"--delimiter '@' --scrollbar '▍' "
                   f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
                   f"--style=full:line --layout=reverse --print-query")
@@ -45,6 +46,10 @@ PROJECT_SYMBOL_PICKER_CMD  = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESI
 GOTO_DEFINITION_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
 
 SHOW_REFERENCES_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+
+PARENT_ID = None # will be set by the user through command line interface
+ENV = os.environ.copy()
+ENV["PATH"] = f"{Path.home()/'.local/bin'}:{ENV['PATH']}"
 
 def write_state(func: str, *args) -> None:
     if not LAST_PICKER_STATE_FILE.exists():
@@ -68,23 +73,13 @@ def to_file_line_col(contents: List[str]) -> List[str]:
         output.append(f"{filename}:{linenum}:{colnum}")
     return output
 
-def get_last_active_tmux_pane() -> Optional[str]:
-    try:
-        pane = subprocess.check_output(
-            ["tmux", "display-message", "-p", "#{pane_id}"],
-            universal_newlines=True
-        ).strip()
-        return pane
-    except subprocess.CalledProcessError:
-        return None
-
 def open_files_in_editor(files: List[str]):
-    tmux_target = get_last_active_tmux_pane()
-    if tmux_target is None:
-        tmux_target = '{up-of}'
+    subprocess.run(f'swaymsg "[con_id={PARENT_ID}] focus"',
+                   shell=True, universal_newlines=True, check=True)
     for file in files:
-        subprocess.run(f"tmux send-keys -t '{tmux_target}' ':open {file}' Enter",
-                       shell=True, universal_newlines=True, check=True)
+        subprocess.run(f"wlrctl keyboard type ':open {file}'",
+                       shell=True, universal_newlines=True, check=True,
+                       env=ENV)
 
 def open_last_picker():
     if LAST_PICKER_STATE_FILE.exists():
@@ -97,7 +92,8 @@ def open_last_picker():
 def execute(name: str, cmd: str, query: str, *rest) -> None:
     try:
         write_state(name, query, *rest)
-        result = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+        result = subprocess.check_output(cmd, shell=True, text=True,
+                                         env=ENV)
         query_and_files = result.splitlines()
         if any(query_and_files):
             if len(query_and_files) == 1:
@@ -150,10 +146,13 @@ if __name__ == "__main__":
     cli_args.add_argument("--goto-definition"    , action="store_true", default=False, dest="goto_definition")
     cli_args.add_argument("--show-references"    , action="store_true", default=False, dest="show_references")
     cli_args.add_argument("--symbol"             , type=str, default="", dest="symbol")
+    cli_args.add_argument("--parent-id"          , type=int, required=True, dest="parent_id")
 
     args, _ = cli_args.parse_known_args()
     if (args.goto_definition or args.show_references) and not args.symbol:
         cli_args.error("--symbol is required when using --goto-definition or --show-references")
+
+    PARENT_ID = args.parent_id
 
     if args.open_last_picker:
         open_last_picker()

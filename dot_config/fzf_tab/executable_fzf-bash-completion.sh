@@ -1,9 +1,23 @@
 _FZF_COMPLETION_SEP=$'\x01'
 
 # shell parsing stuff
-_fzf_bash_completion_awk="$( builtin command -v gawk &>/dev/null && echo gawk || echo awk )"
-_fzf_bash_completion_sed="$( builtin command -v gsed &>/dev/null && echo gsed || echo sed )"
-_fzf_bash_completion_grep="$( builtin command -v ggrep &>/dev/null && echo ggrep || echo builtin command grep )"
+if command -v gawk >/dev/null 2>&1; then
+  _fzf_bash_completion_awk="gawk"
+else
+  _fzf_bash_completion_awk="awk"   # Arch default is GNU anyway
+fi
+
+if command -v gsed >/dev/null 2>&1; then
+  _fzf_bash_completion_sed="gsed"
+else
+  _fzf_bash_completion_sed="sed"   # Arch default is GNU sed
+fi
+
+if command -v ggrep >/dev/null 2>&1; then
+  _fzf_bash_completion_grep="ggrep"
+else
+  _fzf_bash_completion_grep="grep"  # Never output invalid "builtin command grep"
+fi
 
 _fzf_bash_completion_awk_escape() {
     "$_fzf_bash_completion_sed" 's/\\/\\\\\\\\/g; s/[[*^$.]/\\\\&/g' <<<"$1"
