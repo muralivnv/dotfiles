@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run --script
+#
 # /// script
 # requires-python = ">=3.14"
 # dependencies = [
@@ -12,6 +14,9 @@ import shlex
 import hashlib
 from watchfiles import watch, DefaultFilter, Change
 from threading import Thread, Event
+from argparse import ArgumentParser
+import os
+import time
 
 DIAGNOSTICS_CMD_FILE = Path(".ronin/diagnostics.txt")
 
@@ -32,22 +37,15 @@ WATCH_ARGS = {
                                                           "^\\.\\#", "^\\.DS_Store$", "^flycheck_", "\\.bck$"))
 }
 
-FZF_RELOAD_COMMAND = f"curl -XPOST localhost:{{FZF_PROC_PORT}} -d '{{PREPROCESS_CMD}}+reload(bash {DIAGNOSTICS_CMD_FILE})' "
+FZF_RELOAD_COMMAND = f"curl -XPOST localhost:{{FZF_PROC_PORT}} -d 'reload(bash {DIAGNOSTICS_CMD_FILE})' "
+
+ENV = os.environ.copy()
+ENV["PATH"] = f"{Path.home()/'.local/bin'}:{ENV['PATH']}"
 
 def get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', 0))
         return s.getsockname()[1]
-
-def get_tmux_window_id() -> str:
-    try:
-        window_id = subprocess.check_output(
-            ["tmux", "display-message", "-p", "#{window_id}"],
-            text=True
-        ).strip()
-        return window_id
-    except subprocess.CalledProcessError:
-        raise RuntimeError("Failed to get current tmux window ID. Are you in a tmux session?")
 
 def get_file_content_hash(file: str) -> str:
     h = hashlib.blake2b()
@@ -56,13 +54,13 @@ def get_file_content_hash(file: str) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def watch_thread(window_id: str, free_port: int, stop_event: Event):
+def watch_thread(free_port: int, stop_event: Event):
+    time.sleep(1.0)
     files_state = {}
-    tmux_hourglass = (f"execute(win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d'-' -f1); "
-                      f"tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ffd900]  #[default]\";)" )
-    fzf_reload_cmd = shlex.split(FZF_RELOAD_COMMAND.format(FZF_PROC_PORT=free_port, PREPROCESS_CMD=tmux_hourglass))
+    fzf_reload_cmd = shlex.split(FZF_RELOAD_COMMAND.format(FZF_PROC_PORT=free_port))
     try:
-        subprocess.run(fzf_reload_cmd, shell=False, cwd=Path.cwd())
+        subprocess.run(fzf_reload_cmd, shell=False, cwd=Path.cwd(),
+                       env=ENV)
     except subprocess.SubprocessError as e:
         print(e)
         exit(1)
@@ -86,38 +84,41 @@ def watch_thread(window_id: str, free_port: int, stop_event: Event):
                 pass
         if rerun_diagnostics:
             try:
-                subprocess.run(fzf_reload_cmd, shell=False, cwd=Path.cwd())
+                subprocess.run(fzf_reload_cmd, shell=False, cwd=Path.cwd(),
+                               env=ENV)
             except subprocess.SubprocessError as e:
-                print(e)
-                exit(1)
+                import traceback
+                traceback.print_exc()
+                input("Press [Enter] to exit")
 
 if __name__ == "__main__":
-    window_id = get_tmux_window_id()
-    if not DIAGNOSTICS_CMD_FILE.exists():
-        raise FileNotFoundError(f"File {DIAGNOSTICS_CMD_FILE} not found")
+    try:
+        cli_args = ArgumentParser(description="Interactive diagnostics")
+        cli_args.add_argument("--parent-id", type=int, required=True, dest="parent_id")
+        args, _ = cli_args.parse_known_args()
 
-    free_port = get_free_port()
-    fzf_cmd = (
-                 FZF_CMD
-               + f" --listen {free_port}"
-               + " --bind \"ctrl-e:execute-silent(tmux send-keys -t '{up-of}' ':open {1}:{2}:{3}' Enter)\" "
-               + "--bind 'load:execute-silent( "
-                    f"win_name=$(tmux display-message -t {window_id} -p \"#W\" | cut -d'-' -f1); "
-                    " if [ \"${FZF_TOTAL_COUNT}\" -gt 0 ]; then "
-                        f"tmux rename-window -t {window_id} \"${{win_name}}-#[fg=#ff4400]  #[default]${{FZF_TOTAL_COUNT}} \"; "
-                    " else "
-                        f"tmux rename-window -t {window_id} \"${{win_name}}\"; "
-                    "fi"
-                ")' "
-               )
-    stop_event = Event()
-    t = Thread(target=watch_thread, args=(window_id, free_port, stop_event))
-    fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=Path.cwd())
-    t.start()
-    fzf_proc.wait()
+        if not DIAGNOSTICS_CMD_FILE.exists():
+            raise FileNotFoundError(f"File {DIAGNOSTICS_CMD_FILE} not found")
 
-    stop_event.set()
-    stop_file = Path(".STOP")
-    stop_file.touch()
-    t.join()
-    stop_file.unlink(missing_ok=True)
+        free_port = get_free_port()
+        fzf_cmd = (
+                     FZF_CMD
+                   + f" --listen {free_port}"
+                   + f" --bind \"ctrl-e:execute-silent(swaymsg '[con_id={args.parent_id}] focus' && wlrctl keyboard type ':open {{1}}:{{2}}:{{3}}')\" "
+                   )
+        stop_event = Event()
+        t = Thread(target=watch_thread, args=(free_port, stop_event))
+        fzf_proc = subprocess.Popen(fzf_cmd, shell=True, cwd=Path.cwd(),
+                                    env=ENV)
+        t.start()
+        fzf_proc.wait()
+
+        stop_event.set()
+        stop_file = Path(".STOP")
+        stop_file.touch()
+        t.join()
+        stop_file.unlink(missing_ok=True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        input("Press [Enter] to exit")

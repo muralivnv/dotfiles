@@ -113,10 +113,10 @@ x         = "extend_line"
 [keys.normal.space]
 "space" = ":pipe-to bash {{ .chezmoi.homeDir}}/.config/scripts/term_launch.sh {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-last-picker > /dev/null 2>&1 &"
 "/" = ":pipe-to bash {{ .chezmoi.homeDir}}/.config/scripts/term_launch.sh {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-content-picker > /dev/null 2>&1 &"
-"i" = ":sh python3 {{ .chezmoi.homeDir}}/.config/scripts/devdocs.py > /dev/null 2>&1 &"
+"i" = ":pipe-to bash {{ .chezmoi.homeDir}}/.config/scripts/term_launch.sh {{ .chezmoi.homeDir}}/.config/scripts/devdocs.py > /dev/null 2>&1 &"
 "s" = ":pipe-to bash {{ .chezmoi.homeDir}}/.config/scripts/term_launch.sh {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker --file %{buffer_name} > /dev/null 2>&1 &"
 "S" = ":pipe-to bash {{ .chezmoi.homeDir}}/.config/scripts/term_launch.sh {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker > /dev/null 2>&1 &"
-"D" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
+"D" = ":pipe-to bash {{ .chezmoi.homeDir}}/.config/scripts/term_launch.sh {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
 
 [keys.normal.g]
 t = "goto_file_start"
