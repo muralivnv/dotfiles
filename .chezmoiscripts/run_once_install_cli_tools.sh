@@ -1,6 +1,35 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+# Define the tools required for the build process
+REQUIRED_TOOLS=("meson" "ninja" "tar" "unzip")
+MISSING_TOOLS=()
+STATUS_CODE=0
+
+echo "--- Checking Required Build Tools ---"
+check_tool() {
+    local tool_name=$1
+    if command -v "$tool_name" >/dev/null 2>&1; then
+        echo "✅ $tool_name is installed."
+    else
+        echo "❌ $tool_name is NOT found."
+        MISSING_TOOLS+=("$tool_name")
+        STATUS_CODE=1
+    fi
+}
+
+for tool in "${REQUIRED_TOOLS[@]}"; do
+    check_tool "$tool"
+done
+
+if [ "$STATUS_CODE" -eq 0 ]; then
+    echo "All required tools are present."
+else
+    echo "⚠️ ERROR: The following tools are missing: ${MISSING_TOOLS[*]}"
+    echo "Please install them to proceed with the build process."
+fi
+echo "-------------------------------------"
+
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
@@ -40,6 +69,8 @@ install_tool() {
     chmod +x "$INSTALL_DIR/$name"
     rm -rf "$tmpdir"
     echo "$name $target_version installed."
+  else
+    echo "✅ $name is upto date."
   fi
 }
 
@@ -51,6 +82,7 @@ PASTEL_VERSION="0.11.0"
 YAZI_VERSION="25.5.31"
 GAI_VERSION="25.10.2"
 SAKURA_VERSION="25.10.2"
+WLRCTL_VERSION="25.10.2"
 
 install_tool "fzf" "$FZF_VERSION" \
   "fzf --version" \
@@ -107,6 +139,18 @@ install_tool "sakura" "$SAKURA_VERSION" \
   "https://github.com/muralivnv/coding_utilities/releases/download/v$SAKURA_VERSION/sakura-v$SAKURA_VERSION-x86_64-unknown-linux-musl.tar.xz" \
   "sakura-v$SAKURA_VERSION-x86_64-unknown-linux-musl.tar.xz" \
   "sakura"
+
+# wlrctl
+WLRCTL_TEMP_DIR=$(mktemp -d)
+WLRCTL_URL="https://github.com/muralivnv/coding_utilities/releases/download/v$WLRCTL_VERSION/wlrctl-v$WLRCTL_VERSION.tar.xz"
+WLRCTL_FILENAME="wlrctl-v$WLRCTL_VERSION.tar.xz"
+WLRCTL_EXTRACTED_DIR="wlrctl-v$WLRCTL_VERSION"
+
+curl -L -o "$WLRCTL_TEMP_DIR/$WLRCTL_FILENAME" "$WLRCTL_URL"
+tar -xJvf "$WLRCTL_TEMP_DIR/$WLRCTL_FILENAME" -C "$WLRCTL_TEMP_DIR" 
+cd "$WLRCTL_TEMP_DIR"
+meson setup --reconfigure --prefix="$HOME/.local" build
+ninja -C build install
 
 # moreutils
 if command -v apt >/dev/null 2>&1; then
