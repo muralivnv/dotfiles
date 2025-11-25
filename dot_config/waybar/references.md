@@ -1,0 +1,2 @@
+- https://github.com/SwayKh/dotfiles/blob/main/waybar/config.jsonc
+- https://git.gay/sunworms/nixos-files/src/branch/main/users/sunny/desktop/waybar/style.css#

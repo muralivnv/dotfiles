@@ -1,0 +1,3 @@
+profile {
+    output "BOE 0x0AE3 Unknown" enable mode 1920x1080 position 0,0 scale 1
+}
