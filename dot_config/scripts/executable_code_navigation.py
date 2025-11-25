@@ -6,14 +6,10 @@
 # ///
 
 # imports
-import subprocess
-import re
-import shlex
-from argparse import ArgumentParser
-from typing import Optional, List
-import traceback
+from subprocess import run, check_output
+from shlex import quote
 from pathlib import Path
-import os
+from os import environ
 
 FILE_FILTER_FILE = Path(".ronin/file-filter.txt")
 if not FILE_FILTER_FILE.is_file():
@@ -31,24 +27,13 @@ if not TREESITTER_TAGS_CONFIG_FILE.is_file():
 
 LAST_PICKER_STATE_FILE = Path(".ronin/last-picker-state.txt")
 
-PREVIEW_CMD    = "--preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
-FZF_CMD        = (f"fzf --ansi --border -i {PREVIEW_CMD} "
+FZF_CMD        = ("fzf --ansi --border -i --preview 'bat {1} --highlight-line {2}' --preview-window 'right,+{2}+3/3,~3' "
                   f"--delimiter '@' --scrollbar '▍' "
                   f"--nth=-1 --bind=tab:down,shift-tab:up --smart-case --cycle "
                   f"--style=full:line --layout=reverse --print-query")
 
-CONTENT_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs gai -f '\\w' -v -d @ --files | {FZF_CMD} --tiebreak=begin"
-FILE_PICKER_CMD    = f"{FILE_FILTER_CMD} | gai -r '/(\\S+)/$1@1/' | {FZF_CMD} --nth=1 --tiebreak=pathname"
-
-FILE_SYMBOL_PICKER_CMD     = f"sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
-PROJECT_SYMBOL_PICKER_CMD  = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
-
-GOTO_DEFINITION_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
-
-SHOW_REFERENCES_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
-
 PARENT_ID = None # will be set by the user through command line interface
-ENV = os.environ.copy()
+ENV = environ.copy()
 ENV["PATH"] = f"{Path.home()/'.local/bin'}:{ENV['PATH']}"
 
 def write_state(func: str, *args) -> None:
@@ -57,7 +42,8 @@ def write_state(func: str, *args) -> None:
     with open(LAST_PICKER_STATE_FILE, "w", encoding="utf-8") as outfile:
         outfile.write(f"{func},{','.join(args)}")
 
-def to_file_line_col(contents: List[str]) -> List[str]:
+def to_file_line_col(contents: list[str]) -> list[str]:
+    import re
     pattern = re.compile(r"^([^@]+)@(\d+)(?:@(.*))?$")
     output = []
     for content in contents:
@@ -73,13 +59,11 @@ def to_file_line_col(contents: List[str]) -> List[str]:
         output.append(f"{filename}:{linenum}:{colnum}")
     return output
 
-def open_files_in_editor(files: List[str]):
-    subprocess.run(f'swaymsg "[con_id={PARENT_ID}] focus"',
-                   shell=True, universal_newlines=True, check=True)
+def open_files_in_editor(files: list[str]):
+    run(f'swaymsg "[con_id={PARENT_ID}] focus"', shell=True, universal_newlines=True, check=True, env=ENV)
     for file in files:
-        subprocess.run(f"wlrctl keyboard type ':open {file}'",
-                       shell=True, universal_newlines=True, check=True,
-                       env=ENV)
+        run(f"wlrctl keyboard type ':open {file}'",
+            shell=True, universal_newlines=True, check=True, env=ENV)
 
 def open_last_picker():
     if LAST_PICKER_STATE_FILE.exists():
@@ -92,8 +76,7 @@ def open_last_picker():
 def execute(name: str, cmd: str, query: str, *rest) -> None:
     try:
         write_state(name, query, *rest)
-        result = subprocess.check_output(cmd, shell=True, text=True,
-                                         env=ENV)
+        result = check_output(cmd, shell=True, text=True, env=ENV)
         query_and_files = result.splitlines()
         if any(query_and_files):
             if len(query_and_files) == 1:
@@ -106,37 +89,46 @@ def execute(name: str, cmd: str, query: str, *rest) -> None:
             file_line_col = to_file_line_col(files)
             open_files_in_editor(file_line_col)
     except Exception:
+        import traceback
         traceback.print_exc()
 
 def open_content_picker(query: str = ""):
-    cmd = CONTENT_PICKER_CMD + " --query=" + shlex.quote(query)
+    CONTENT_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs gai -f '\\w' -v -d @ --files | {FZF_CMD} --tiebreak=begin"
+    cmd = CONTENT_PICKER_CMD + " --query=" + quote(query)
     execute(open_content_picker.__name__, cmd, query)
 
 def open_file_picker(query: str = ""):
-    cmd = FILE_PICKER_CMD + " --query=" + shlex.quote(query)
+    FILE_PICKER_CMD    = f"{FILE_FILTER_CMD} | gai -r '/(\\S+)/$1@1/' | {FZF_CMD} --nth=1 --tiebreak=pathname"
+    cmd = FILE_PICKER_CMD + " --query=" + quote(query)
     execute(open_file_picker.__name__, cmd, query)
 
 def open_symbol_picker(query: str = "", file: str = ""):
+    FILE_SYMBOL_PICKER_CMD     = f"sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files {{FILE_PLACEHOLDER}} | {FZF_CMD} --with-nth=-1 --query='{{QUERY_PLACEHOLDER}}' "
+    PROJECT_SYMBOL_PICKER_CMD  = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
+
     if file == "":
-        cmd = PROJECT_SYMBOL_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", shlex.quote(query))
+        cmd = PROJECT_SYMBOL_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", quote(query))
     else:
         cmd = FILE_SYMBOL_PICKER_CMD.replace("{FILE_PLACEHOLDER}", file) \
-                                    .replace("{QUERY_PLACEHOLDER}", shlex.quote(query))
+                                    .replace("{QUERY_PLACEHOLDER}", quote(query))
     execute(open_symbol_picker.__name__, cmd, query, file)
 
 def goto_definition(symbol: str):
+    GOTO_DEFINITION_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' --select-1 --exit-0 "
     if not symbol:
         return
     cmd = GOTO_DEFINITION_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", symbol)
     execute(goto_definition.__name__, cmd, symbol)
 
 def show_references(symbol: str):
+    SHOW_REFERENCES_PICKER_CMD = f"{FILE_FILTER_CMD} | xargs sakura --config {TREESITTER_TAGS_CONFIG_FILE} --definitions --references --files | gai -f '\\b{{QUERY_PLACEHOLDER}}\\b' | ifne {FZF_CMD} --query='{{QUERY_PLACEHOLDER}}' "
     if not symbol:
         return
     cmd = SHOW_REFERENCES_PICKER_CMD.replace("{QUERY_PLACEHOLDER}", symbol)
     execute(show_references.__name__, cmd, symbol)
 
 if __name__ == "__main__":
+    from argparse import ArgumentParser
     cli_args = ArgumentParser(description="Code navigation using FZF, Gai and Sakura")
     cli_args.add_argument("--open-last-picker"   , action="store_true", default=False, dest="open_last_picker")
     cli_args.add_argument("--open-file-picker"   , action="store_true", default=False, dest="open_file_picker")
@@ -153,7 +145,6 @@ if __name__ == "__main__":
         cli_args.error("--symbol is required when using --goto-definition or --show-references")
 
     PARENT_ID = args.parent_id
-
     if args.open_last_picker:
         open_last_picker()
     elif args.open_file_picker:
