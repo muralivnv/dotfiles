@@ -54,6 +54,7 @@ YAZI_VERSION="25.5.31"
 GAI_VERSION="25.10.2"
 SAKURA_VERSION="25.10.2"
 WLRCTL_VERSION="25.10.2"
+JACK_VERSION="25.10.2"
 
 install_tool "fzf" "$FZF_VERSION" \
   "fzf --version" \
@@ -110,6 +111,13 @@ install_tool "sakura" "$SAKURA_VERSION" \
   "https://github.com/muralivnv/coding_utilities/releases/download/v$SAKURA_VERSION/sakura-v$SAKURA_VERSION-x86_64-unknown-linux-musl.tar.xz" \
   "sakura-v$SAKURA_VERSION-x86_64-unknown-linux-musl.tar.xz" \
   "sakura"
+
+install_tool "jack" "$JACK_VERSION" \
+  "jack --version" \
+  "awk '{print \$0}'" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v$JACK_VERSION/jack-v$JACK_VERSION-x86_64-unknown-linux-musl.tar.xz" \
+  "jack-v$JACK_VERSION-x86_64-unknown-linux-musl.tar.xz" \
+  "jack"
 
 # wlrctl
 WLRCTL_TEMP_DIR=$(mktemp -d)
