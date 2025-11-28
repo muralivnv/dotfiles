@@ -113,7 +113,7 @@
     "tooltip": false
   },
   "wireplumber#sink": {
-    "format": "{icon}",
+    "format": "{icon} {volume}%",
     "format-icons": [
       "󰕿",
       "󰖀",
