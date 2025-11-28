@@ -66,7 +66,7 @@
   },
   "custom/powermenu": {
     "format": "",
-    "tooltip": "Power Menu",
+    "tooltip": false,
     "on-click": "bash ~/.config/waybar/scripts/power-menu.sh"
   },
   "modules-center": [
@@ -105,7 +105,8 @@
     "tooltip-format": "{controller_alias}\t{controller_address}",
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
-    "on-click": "footclient -T bluetui -e /home/murali/.cargo/bin/bluetui"
+    "on-click": "footclient -T bluetui -e /home/murali/.cargo/bin/bluetui",
+    "on-click-right": "bluetoothctl power off"
   },
   "tray": {
     "icon-size": 13,
