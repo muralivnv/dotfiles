@@ -24,6 +24,13 @@ export EDITOR=hx
 export GIT_EDITOR=hx
 export COLORTERM=truecolor
 
+# jumping between prompts in foot terminal
+# Reference: https://codeberg.org/dnkl/foot/wiki#jumping-between-prompts
+prompt_marker() {
+    printf '\e]133;A\e\\'
+}
+PROMPT_COMMAND=${PROMPT_COMMAND:+$PROMPT_COMMAND; }prompt_marker
+
 # setup starship prompt
 eval "$(starship init bash)"
 
