@@ -120,6 +120,7 @@ install_tool "jack" "$JACK_VERSION" \
   "jack"
 
 # wlrctl
+echo "Installing 'wlrctl' ------------ "
 WLRCTL_TEMP_DIR=$(mktemp -d)
 WLRCTL_URL="https://github.com/muralivnv/coding_utilities/releases/download/v$WLRCTL_VERSION/wlrctl-v$WLRCTL_VERSION.tar.xz"
 WLRCTL_FILENAME="wlrctl-v$WLRCTL_VERSION.tar.xz"
@@ -130,6 +131,16 @@ tar -xJvf "$WLRCTL_TEMP_DIR/$WLRCTL_FILENAME" -C "$WLRCTL_TEMP_DIR"
 cd "$WLRCTL_TEMP_DIR"
 meson setup --reconfigure --prefix="$HOME/.local" build
 ninja -C build install
+
+# wlsunset
+echo "Installing 'wlsunset' ------------ "
+WLSUNSET_TEMP_DIR=$(mktemp -d)
+WLSUNSET_GIT_REPO="https://git.sr.ht/~kennylevinsen/wlsunset"
+git clone $WLSUNSET_GIT_REPO $WLSUNSET_TEMP_DIR
+cd $WLSUNSET_TEMP_DIR
+meson build
+ninja -C build
+cp build/wlsunset "$HOME/.local/bin"
 
 # moreutils
 if command -v apt >/dev/null 2>&1; then
