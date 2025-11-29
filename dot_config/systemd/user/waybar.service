@@ -1,0 +1,13 @@
+[Unit]
+Description=Wayland bar for Sway and Wlroots based compositors
+PartOf=graphical-session.target
+After=sway.service
+
+[Service]
+Type=simple
+ExecStart=%h/.config/sway/scripts/start-waybar.sh
+RestartSec=5
+Restart=always
+
+[Install]
+WantedBy=graphical-session.target

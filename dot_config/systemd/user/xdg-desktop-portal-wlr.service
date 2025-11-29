@@ -1,0 +1,13 @@
+[Unit]
+Description=xdg-desktop-portal implementation for wlroots
+PartOf=graphical-session.target
+After=sway.service
+
+[Service]
+Type=exec
+ExecStart=/usr/lib/xdg-desktop-portal-wlr
+RestartSec=5
+Restart=always
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Kanshi dynamic display configuration
+PartOf=graphical-session.target
+After=sway.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kanshi
+RestartSec=5
+Restart=always
+
+[Install]
+WantedBy=graphical-session.target

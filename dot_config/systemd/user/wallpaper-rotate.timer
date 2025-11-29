@@ -1,0 +1,10 @@
+[Unit]
+Description=Rotate wallpaper every 21 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=21min
+Unit=wallpaper-rotate.service
+
+[Install]
+WantedBy=default.target

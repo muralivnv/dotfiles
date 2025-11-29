@@ -1,0 +1,2 @@
+https://github.com/xdbob/sway-services/blob/master/systemd/kanshi.service
+https://blog.patapon.info/nixos-systemd-sway/
