@@ -89,7 +89,7 @@ def watch_thread(free_port: int, stop_event: Event):
             except subprocess.SubprocessError as e:
                 import traceback
                 traceback.print_exc()
-                input("Press [Enter] to exit")
+                exit(1)
 
 if __name__ == "__main__":
     try:
@@ -121,4 +121,4 @@ if __name__ == "__main__":
     except Exception as e:
         import traceback
         traceback.print_exc()
-        input("Press [Enter] to exit")
+        exit(1)

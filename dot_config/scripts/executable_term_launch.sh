@@ -18,4 +18,4 @@ for arg in "$@"; do
     CMD_TO_EXEC+="\"${arg}\" "
 done
 
-footclient -E --no-wait -D "$(pwd)" -e bash -ic "${CMD_TO_EXEC} --parent-id ${PARENT_WINDOW_ID}"
+footclient -E --no-wait -D "$(pwd)" -e bash -ic "${CMD_TO_EXEC} --parent-id ${PARENT_WINDOW_ID} || { echo -e \"\nCommand failed (Exit code: \$?): Press ENTER to close...\"; read -r; }"
