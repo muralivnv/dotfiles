@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --python 3.14 --with numpy --with matplotlib python -i
 
-from numpy import *
-from matplotlib.pyplot import *
+import numpy as np
+import matplotlib.pyplot as plt
 
 class TempConverter:
     def __init__(self, func):

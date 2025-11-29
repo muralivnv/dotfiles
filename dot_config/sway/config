@@ -216,6 +216,14 @@ bindsym $mod+r mode "resize"
     # Special key to take a screenshot with grim
     bindsym Print exec grim
 
+bindsym F5 [app_id="yazi_scratchpad"] scratchpad show; \
+           [app_id="yazi_scratchpad"] resize set 1200 800; \
+           [app_id="yazi_scratchpad"] move position center
+
+bindsym F7 [app_id="python_scratchpad"] scratchpad show; \
+           [app_id="python_scratchpad"] resize set 1200 800; \
+           [app_id="python_scratchpad"] move position center
+
 #
 # Status Bar:
 #
@@ -225,6 +233,9 @@ bar swaybar_command waybar
 for_window [title="Picture-in-Picture(.*)"] floating enable
 for_window [title="(.*)bluetui(.*)"] floating enable, resize set 800 600
 for_window [title="(.*)wiremix(.*)"] floating enable, resize set 800 600
+for_window [app_id="yazi_scratchpad"] floating enable, move scratchpad
+for_window [app_id="python_scratchpad"] floating enable, move scratchpad
+
 default_border pixel 2
 hide_edge_borders smart
 mouse_warping output
@@ -241,6 +252,10 @@ exec foot --server
 exec mako
 exec kanshi
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
-exec xdg-desktop-portal-wlr
+exec /usr/lib/xdg-desktop-portal-wlr
+
+# scratchpads
+exec footclient --app-id="yazi_scratchpad" -e ~/.local/bin/yazi
+exec footclient --app-id='python_scratchpad' -e ~/.local/bin/uv run --python 3.14 --with numpy --with matplotlib python -i ~/.config/scripts/repl.py
 
 include /etc/sway/config.d/*
