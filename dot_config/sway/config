@@ -244,8 +244,4 @@ client.background       #ffffff
 
 exec foot --server
 
-# Launch Scratchpads
-exec footclient --app-id="yazi_scratchpad" -e ~/.local/bin/yazi
-exec footclient --app-id='python_scratchpad' -e ~/.local/bin/uv run --python 3.14 --with numpy --with matplotlib python -i ~/.config/scripts/repl.py
-
 include /etc/sway/config.d/*

@@ -15,11 +15,10 @@ alias '..'='cd ..'
 alias gr="uv run $HOME/.config/scripts/git_repo_list.py"
 alias gl="uv run $HOME/.config/scripts/git_log.py"
 alias gc="uv run $HOME/.config/scripts/git_commit.py"
-alias gf="git fetch --all"
-alias gp="git pull --rebase"
-alias gP="git push"
-alias gPf="git push --force-with-lease"
 alias yy="yazi"
+alias yy_scratch="swaymsg exec 'footclient --app-id=\"yazi_scratchpad\" -e $HOME/.local/bin/yazi'"
+alias py_scratch="swaymsg exec 'footclient --app-id=\"python_scratchpad\" -e $HOME/.local/bin/uv run --python 3.14 --with numpy --with matplotlib python -i $HOME/.config/scripts/repl.py'"
+
 export EDITOR=hx
 export GIT_EDITOR=hx
 export COLORTERM=truecolor
