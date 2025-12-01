@@ -1,7 +1,7 @@
 {
   "backlight": {
     "device": "nvidia_wmi_ec_backlight",
-    "format": "{icon}",
+    "format": "{icon} {percent}%",
     "format-icons": [
       "󰛩",
       "󱩎",
@@ -17,7 +17,7 @@
     ],
     "on-scroll-down": "brightnessctl set 1%-",
     "on-scroll-up": "brightnessctl set +1%",
-    "tooltip-format": "{percent}%"
+    "tooltip": false
   },
   "battery": {
     "bat": "BAT1",
@@ -44,7 +44,7 @@
       "critical": 15,
       "warning": 30
     },
-    "tooltip-format": "{capacity}% {timeTo}"
+    "tooltip-format": "{timeTo}"
   },
   "clock": {
     "calendar": {
@@ -125,16 +125,16 @@
     "on-click": "footclient -T wiremix -e /home/murali/.cargo/bin/wiremix -v output",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "scroll-step": 1,
-    "tooltip-format": "{volume}%"
+    "tooltip": false
   },
   "wireplumber#source": {
-    "format": "",
+    "format": " {volume}%",
     "format-muted": "",
     "max-volume": 150,
     "node-type": "Audio/Source",
     "on-click": "footclient -T wiremix -e /home/murali/.cargo/bin/wiremix -v input",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
     "scroll-step": 1,
-    "tooltip-format": "{volume}%"
+    "tooltip": false
   }
 }
