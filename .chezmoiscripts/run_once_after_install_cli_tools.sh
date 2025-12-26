@@ -115,8 +115,8 @@ install_tool "sakura" "$SAKURA_VERSION" \
 install_tool "jack" "$JACK_VERSION" \
   "jack --version" \
   "awk '{print \$0}'" \
-  "https://github.com/muralivnv/coding_utilities/releases/download/v$JACK_VERSION/jack-v$JACK_VERSION-x86_64-unknown-linux-musl.tar.xz" \
-  "jack-v$JACK_VERSION-x86_64-unknown-linux-musl.tar.xz" \
+  "https://github.com/muralivnv/coding_utilities/releases/download/v$JACK_VERSION/jack-v$JACK_VERSION.tar.xz" \
+  "jack-v$JACK_VERSION.tar.xz" \
   "jack"
 
 # wlrctl
