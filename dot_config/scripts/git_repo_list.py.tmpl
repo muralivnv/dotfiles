@@ -23,7 +23,7 @@ REPOS = {d.name: d for d in DEV_FOLDERS}
 SCRIPT_DIR = "{{ dir .chezmoi.targetFile }}"
 
 CMD = "fzf --delimiter \"@\" --reverse "\
-      f"--bind 'enter:become(cd {{ printf "{{2}}" }}; python3 {SCRIPT_DIR}/git_log.py)' "\
+      f"--bind 'enter:become(cd {{ printf "{{2}}" }}; uv run {SCRIPT_DIR}/git_log.py)' "\
       "--bind=tab:down,shift-tab:up --cycle --with-nth=1"
 
 if __name__ == "__main__":

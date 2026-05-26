@@ -1,0 +1,66 @@
+#!/bin/bash
+# Lightweight client for the navigation daemon.
+# Sends commands via Unix socket using line-delimited JSON.
+
+SOCK=".ronin/nav.sock"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+start_daemon() {
+    rm -f "$SOCK" ".ronin/nav.pid"
+    uv run --script "$SCRIPT_DIR/daemon.py" </dev/null >/dev/null 2>&1 &
+    disown
+    for _ in $(seq 1 100); do
+        [ -S "$SOCK" ] && return 0
+        sleep 0.01
+    done
+    return 1
+}
+
+send_msg() {
+    printf '%s\n' "$1" | socat -t0 - UNIX-CONNECT:"$SOCK" 2>/dev/null
+}
+
+# Escape a value for use as a JSON string (backslashes first, then double-quotes).
+json_str() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+# Get tmux pane ID
+PANE=$(tmux display-message -p '#{pane_id}' 2>/dev/null || true)
+
+CMD="$1"
+shift
+
+# Build a JSON array from the remaining positional arguments.
+ARGS_JSON='['
+first=true
+for arg in "$@"; do
+    if [ "$first" = "true" ]; then
+        first=false
+    else
+        ARGS_JSON="${ARGS_JSON},"
+    fi
+    ARGS_JSON="${ARGS_JSON}\"$(json_str "$arg")\""
+done
+ARGS_JSON="${ARGS_JSON}]"
+
+MSG=$(printf '{"tmux":"%s","pane":"%s","cmd":"%s","args":%s}' \
+    "$(json_str "$TMUX")" \
+    "$(json_str "$PANE")" \
+    "$(json_str "$CMD")" \
+    "$ARGS_JSON")
+
+# Handle stop: send, wait for cleanup, remove any leftovers
+if [ "$CMD" = "stop" ]; then
+    [ -S "$SOCK" ] && send_msg "$MSG"
+    sleep 0.2
+    rm -f "$SOCK" ".ronin/nav.pid"
+    exit 0
+fi
+
+# Send, starting daemon if needed
+if [ -S "$SOCK" ]; then
+    send_msg "$MSG" || { start_daemon && send_msg "$MSG"; }
+else
+    start_daemon && send_msg "$MSG"
+fi

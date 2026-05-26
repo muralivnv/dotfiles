@@ -25,11 +25,11 @@ echo "Building helix $VERSION..."
 BIN_OUT="$HOME/.local"
 HELIX_CFG_PATH="$HOME/.config/helix"
 RUNTIME_PATH="$HELIX_CFG_PATH"
-cargo install --path helix-term --locked --target-dir build --root="$BIN_OUT" --force
+HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1 cargo install --path helix-term --locked --target-dir build --root="$BIN_OUT" --force
 
 cd "$BIN_OUT/bin"
-./hx --grammar fetch
-./hx --grammar build
+./hx --grammar fetch || true
+./hx --grammar build || true
 
 rm -rf "$HELIX_CFG_PATH/runtime/grammars/sources"
 cp -r "$SRC_DIR/runtime/queries" "$RUNTIME_PATH/runtime/queries"

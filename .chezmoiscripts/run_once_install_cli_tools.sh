@@ -43,12 +43,12 @@ install_tool() {
   fi
 }
 
-FZF_VERSION="0.66.1"
-BAT_VERSION="0.26.0"
-ZOXIDE_VERSION="0.9.8"
-STARSHIP_VERSION="1.24.0"
-PASTEL_VERSION="0.11.0"
-YAZI_VERSION="25.5.31"
+FZF_VERSION="0.73.1"
+BAT_VERSION="0.26.1"
+ZOXIDE_VERSION="0.9.9"
+STARSHIP_VERSION="1.25.1"
+PASTEL_VERSION="0.12.0"
+YAZI_VERSION="26.5.6"
 GAI_VERSION="25.10.2"
 SAKURA_VERSION="25.10.2"
 
@@ -113,3 +113,10 @@ if ! dpkg -s moreutils >/dev/null 2>&1; then
   echo "Installing moreutils"
   sudo apt install -y moreutils
 fi
+
+# socat
+if ! dpkg -s socat >/dev/null 2>&1; then
+  echo "Installing socat"
+  sudo apt install -y socat
+fi
+

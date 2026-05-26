@@ -1,0 +1,9 @@
+font-family = "CommitMonoCustom Nerd Font"
+font-size = 11
+background = #2E3436
+foreground = #D3D7CF
+background-opacity = 0.98
+bold-is-bright = true
+mouse-hide-while-typing = true
+gtk-titlebar = false
+quick-terminal-animation-duration = 0

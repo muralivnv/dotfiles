@@ -3,8 +3,11 @@ set -euo pipefail
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-cd $TMP_DIR
-mkdir -p $TMP_DIR/libs
+cd "$TMP_DIR"
+mkdir -p "$TMP_DIR/libs"
+
+sudo apt update
+sudo apt install -y automake autoconf libtool bison byacc libssl-dev pkg-config curl git wget
 
 ############
 # LIBEVENT #
@@ -15,8 +18,8 @@ cd $(find . -maxdepth 1 -type d -name "libevent-*" -printf '%P\n')
 
 echo "Building libevent ..."
 ./autogen.sh
-./configure --prefix=$TMP_DIR/libs --disable-shared
-make
+./configure --prefix="$TMP_DIR/libs" --disable-shared
+make -j$(nproc)
 make install
 cd ..
 
@@ -28,12 +31,16 @@ tar xvzf ncurses.tar.gz
 cd $(find . -maxdepth 1 -type d -name "ncurses-*" -printf '%P\n')
 
 echo "Building ncurses ..."
-./configure --prefix=$TMP_DIR/libs --with-default-terminfo-dir=/usr/share/terminfo --with-terminfo-dirs="/usr/share/terminfo"
+./configure --prefix="$TMP_DIR/libs" \
+    --with-default-terminfo-dir=/usr/share/terminfo \
+    --with-terminfo-dirs="/usr/share/terminfo" \
+    --enable-widec \
+    --enable-pc-files \
+    --with-pkg-config-libdir="$TMP_DIR/libs/lib/pkgconfig"
 
-make libs
+make libs -j$(nproc)
 make install.libs
 make install.includes
-
 cd ..
 
 ########
@@ -49,7 +56,17 @@ git apply 4379.diff
 
 echo "Building tmux ..."
 ./autogen.sh
-./configure --prefix=$HOME/.local/ --enable-static CFLAGS="-I$TMP_DIR/libs/include -I$TMP_DIR/libs/include/ncurses" LDFLAGS="-L$TMP_DIR/libs/lib -L$TMP_DIR/libs/include/ncurses -L$TMP_DIR/libs/include" LIBEVENT_CFLAGS="-I$TMP_DIR/libs/include" LIBEVENT_LIBS="-L$TMP_DIR/libs/lib -levent"
-make
+
+# Export local pkgconfig so tmux can easily discover ncursesw and libevent
+export PKG_CONFIG_PATH="$TMP_DIR/libs/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+
+./configure --prefix="$HOME/.local" \
+    --enable-static \
+    CPPFLAGS="-I$TMP_DIR/libs/include -I$TMP_DIR/libs/include/ncursesw" \
+    LDFLAGS="-L$TMP_DIR/libs/lib" \
+    LIBEVENT_CFLAGS="-I$TMP_DIR/libs/include" \
+    LIBEVENT_LIBS="-L$TMP_DIR/libs/lib -levent"
+
+make -j$(nproc)
 make install
 echo "Tmux installation complete."

@@ -7,24 +7,14 @@
 # ]
 # ///
 
-from re import match
 from subprocess import run, CalledProcessError
 import sys
-from typing import Optional
 from prompt_toolkit import prompt
 
-def _extract_branch(text) -> Optional[str]:
-    m = match(r"^\d+@([A-Za-z0-9._/-]+)\s+", text)
-    if m:
-        branch = m.group(1)
-        if branch.startswith("origin/"):
-            branch = branch[len("origin/") :]
-        return branch
-    return None
 
 def _run_editable_command(initial_cmd: str) -> None:
     try:
-        user_cmd = prompt("💀 ", default=initial_cmd)
+        user_cmd = prompt("\U0001f480 ", default=initial_cmd)
     except KeyboardInterrupt:
         return
 
@@ -40,33 +30,36 @@ def _run_editable_command(initial_cmd: str) -> None:
         except EOFError:
             pass
 
-def checkout_branch(arg) -> None:
-    branch = _extract_branch(arg)
-    if branch:
-        _run_editable_command(f'git switch "{branch}" ')
 
-def reset_branch(arg):
-    branch = _extract_branch(arg)
-    if branch:
-        _run_editable_command(f'git reset --hard "{branch}" ')
+def checkout_branch(branch) -> None:
+    if branch.startswith("origin/"):
+        branch = branch[len("origin/"):]
+    _run_editable_command(f'git switch "{branch}" ')
 
-def delete_branch(arg):
-    branch = _extract_branch(arg)
-    if branch:
-        _run_editable_command(f'git branch -d "{branch}" ')
 
-def force_delete_branch(arg):
-    branch = _extract_branch(arg)
-    if branch:
-        _run_editable_command(f'git branch -D "{branch}" ')
+def reset_branch(branch):
+    _run_editable_command(f'git reset --hard "{branch}" ')
 
-def create_branch(arg):
-    branch = _extract_branch(arg)
-    if branch:
-        _run_editable_command(f'git branch >>>BRANCH-NAME<<< "{branch}"')
+
+def delete_branch(branch):
+    if branch.startswith("origin/"):
+        branch = branch[len("origin/"):]
+    _run_editable_command(f'git branch -d "{branch}" ')
+
+
+def force_delete_branch(branch):
+    if branch.startswith("origin/"):
+        branch = branch[len("origin/"):]
+    _run_editable_command(f'git branch -D "{branch}" ')
+
+
+def create_branch(branch):
+    _run_editable_command(f'git branch >>>BRANCH-NAME<<< "{branch}"')
+
 
 def pull_rebase():
     _run_editable_command("git pull --rebase ")
+
 
 COMMANDS = {
     "checkout_branch"    : checkout_branch,

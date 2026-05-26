@@ -75,12 +75,12 @@ backspace = "delete_char_backward"
 "]"       = { "]" = "jump_forward"  }
 "\\"    = "vsplit"
 "|"     = "hsplit"
-"'"     = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-file-picker"
+"'"     = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc files"
 "tab"   = "indent"
 "S-tab" = "unindent"
 "A-t"   = "smart_tab"
 
-C-s       = ":w"
+C-s       = [":w", ":sh {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc record-edit %{buffer_name} --line %{cursor_line} --col %{cursor_column} > /dev/null 2>&1 &"]
 C-z       = "undo"
 C-y       = "redo"
 C-v       = "paste_clipboard_before"
@@ -111,12 +111,47 @@ x         = "extend_line"
 "F"       = "extend_prev_char"
 
 [keys.normal.space]
-"space" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-last-picker > /dev/null 2>&1 &"
-"/" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-content-picker > /dev/null 2>&1 &"
-"i" = ":sh python3 {{ .chezmoi.homeDir}}/.config/scripts/devdocs.py > /dev/null 2>&1 &"
-"s" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker --file %{buffer_name} > /dev/null 2>&1 &"
-"S" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --open-symbol-picker > /dev/null 2>&1 &"
+"space" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc last > /dev/null 2>&1 &"
+"/" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc content > /dev/null 2>&1 &"
+"s" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc symbols --file %{buffer_name} > /dev/null 2>&1 &"
+"S" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc symbols --current-file %{buffer_name} > /dev/null 2>&1 &"
 "D" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
+"h" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc frecency > /dev/null 2>&1 &"
+
+# Pin slots — stable positions shown in the sidebar. space 1..4 = jump-to-pin.
+"1" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 1 > /dev/null 2>&1 &"
+"2" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 2 > /dev/null 2>&1 &"
+"3" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 3 > /dev/null 2>&1 &"
+"4" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 4 > /dev/null 2>&1 &"
+# Trail — last 5 visited files (skipping current). space 5..9 = jump-to-trail.
+"5" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 0 > /dev/null 2>&1 &"
+"6" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 1 > /dev/null 2>&1 &"
+"7" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 2 > /dev/null 2>&1 &"
+"8" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 3 > /dev/null 2>&1 &"
+"9" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 4 > /dev/null 2>&1 &"
+# Symbols — top 7 hottest visited symbols. space i,j,k,l,a,e,o = jump-to-symbol.
+"i" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 0 > /dev/null 2>&1 &"
+"j" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 1 > /dev/null 2>&1 &"
+"k" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 2 > /dev/null 2>&1 &"
+"l" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 3 > /dev/null 2>&1 &"
+"a" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 4 > /dev/null 2>&1 &"
+"e" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 5 > /dev/null 2>&1 &"
+"o" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 6 > /dev/null 2>&1 &"
+"P" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc toggle-sidebar > /dev/null 2>&1 &"
+
+[keys.normal.space.p]
+# Chord: space p N → pin current file+cursor to slot N.
+"1" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc pin --slot 1 --current-file %{buffer_name} --line %{cursor_line} --col %{cursor_column} > /dev/null 2>&1 &"
+"2" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc pin --slot 2 --current-file %{buffer_name} --line %{cursor_line} --col %{cursor_column} > /dev/null 2>&1 &"
+"3" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc pin --slot 3 --current-file %{buffer_name} --line %{cursor_line} --col %{cursor_column} > /dev/null 2>&1 &"
+"4" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc pin --slot 4 --current-file %{buffer_name} --line %{cursor_line} --col %{cursor_column} > /dev/null 2>&1 &"
+
+[keys.normal.space.x]
+# Chord: space x N → clear slot N.
+"1" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc clear-pin --slot 1 > /dev/null 2>&1 &"
+"2" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc clear-pin --slot 2 > /dev/null 2>&1 &"
+"3" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc clear-pin --slot 3 > /dev/null 2>&1 &"
+"4" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc clear-pin --slot 4 > /dev/null 2>&1 &"
 
 [keys.normal.g]
 t = "goto_file_start"
@@ -125,10 +160,10 @@ B = "extend_to_file_end"
 T = "extend_to_file_start"
 
 d = ["collapse_selection", "expand_selection", "trim_selections",
-     ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --goto-definition --symbol %{selection} > /dev/null 2>&1 &"]
+     ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc goto-def --symbol %{selection} --current-file %{buffer_name} > /dev/null 2>&1 &"]
 
 r = ["collapse_selection", "expand_selection", "trim_selections",
-     ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/code_navigation.py --show-references --symbol %{selection} > /dev/null 2>&1 &"]
+     ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc show-refs --symbol %{selection} --current-file %{buffer_name} > /dev/null 2>&1 &"]
 
 i = "hover"
 H = "extend_to_line_start"
@@ -182,7 +217,7 @@ C-x       = ["yank_main_selection_to_clipboard", "delete_selection"]
 "C-space" = "completion"
 "C-k"     = "signature_help"
 
-"C-s"     = [":write", "normal_mode"]
+"C-s"     = [":write", ":sh {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc record-edit %{buffer_name} --line %{cursor_line} --col %{cursor_column} > /dev/null 2>&1 &", "normal_mode"]
 "tab"     = ["normal_mode", "indent"]
 "S-tab"   = ["normal_mode", "unindent"]
 "A-z"     = ["normal_mode", ":toggle-option soft-wrap.enable", "insert_mode"]

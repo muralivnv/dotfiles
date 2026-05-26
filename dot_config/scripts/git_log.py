@@ -2,14 +2,17 @@
 #
 # /// script
 # requires-python = ">=3.14"
-# dependencies = []
+# dependencies = ["pygit2"]
 # ///
 
+import shlex
 import subprocess
 from typing import Optional, Tuple
 from argparse import ArgumentParser
 import socket
 from pathlib import Path
+
+import pygit2
 
 DELIMITER               = "@"
 FZF_ESC_RET_CODE        = 130
@@ -17,141 +20,129 @@ SCRIPT_DIR              = Path(__file__).resolve().parent
 REPO_SCRIPT             = SCRIPT_DIR / "git_repo_list.py"
 COMMIT_SCRIPT           = SCRIPT_DIR / "git_commit.py"
 GIT_BRANCH_SCRIPT       = SCRIPT_DIR / "lib/git_branch.py"
+GIT_LOG_FMT             = SCRIPT_DIR / "lib/git_log_fmt.py"
 BRANCH_ACTIONS          = SCRIPT_DIR / "lib/branch_actions.py"
 COMMIT_ACTIONS          = SCRIPT_DIR / "lib/commit_actions.py"
 
-BRANCH_EXTRACT_COMMAND  = r'gai -r "#^\d+@([A-Za-z0-9._\/-]+).*#\$1#"'
-COMMIT_EXTRACT_COMMAND  = r'gai -r "#^\d+@(?:.*)\*\s+([a-z0-9]{4,}).*#\$1#"'
-GIT_BRANCH_BASE_COMMAND = fr'uv run {GIT_BRANCH_SCRIPT} | gai -f "\w" -v -d {DELIMITER}'
+GIT_BRANCH_BASE_COMMAND = f'uv run {GIT_BRANCH_SCRIPT}'
 GIT_LOG_BASE_COMMAND    = (r'git log --oneline --graph --decorate --color '
                            r'--pretty=format:"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s"')
+GIT_LOG_FMT_COMMAND     = f'uv run {GIT_LOG_FMT}'
 TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
 TMUX_PANE               = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
 
+
 def get_selected_line(selection: str) -> Optional[int]:
-    items = selection.split(DELIMITER)
+    """Extract line number from field 2 of KEY@LINE@display."""
+    parts = selection.split(DELIMITER)
     try:
-        ret = int(items[0].strip())
-        return ret
-    except Exception:
-        pass
-    return None
+        return int(parts[1])
+    except (IndexError, ValueError):
+        return None
+
+
+def get_key(selection: str) -> str:
+    """Extract key from field 1 of KEY@LINE@display."""
+    return selection.split(DELIMITER, 1)[0]
+
 
 def get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', 0))
         return s.getsockname()[1]
 
-def is_git_repo() -> bool:
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-        return True
-    except subprocess.CalledProcessError:
-        return False
 
 class BranchPage:
+    """Format: BRANCH_NAME@LINE@display — {1}=branch, {2}=line, {3..}=display"""
+
     def __init__(self, port: int):
-        reload_cmd: str = f'curl -XPOST localhost:{port} -d "reload({GIT_BRANCH_BASE_COMMAND})" '
-        self._vis_command: str = ( f" | "
-                                   f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. --preview '{GIT_LOG_BASE_COMMAND} "
-                                   f"$(echo {{}} | {BRANCH_EXTRACT_COMMAND}) ' --preview-window=bottom:70% "
-                                   f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} checkout_branch {{}})' "
-                                   f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} reset_branch {{}})' "
-                                   f"--bind 'alt-k:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} delete_branch {{}})' "
-                                   f"--bind 'alt-K:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} force_delete_branch {{}})' "
-                                   f"--bind 'alt-c:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} create_branch {{}})' "
-                                   f"--bind 'alt-f:execute-silent({TMUX_POPUP} git fetch --all | less -XR)' "
-                                   f"--bind 'alt-F:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} pull_rebase)' "
-                                   f"--bind 'alt-P:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes)' "
-                                   f"--bind 'alt-g:reload-sync({GIT_BRANCH_BASE_COMMAND})' "
-                                   f"--bind 'alt-q:become(uv run {COMMIT_SCRIPT})' "
-                                   f"--bind 'alt-t:execute-silent({TMUX_PANE})' "
-                                   f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
-                                   "--bind=tab:down,shift-tab:up ")
+        self._vis_command: str = (
+            f" | fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=3.. "
+            f"--preview '{GIT_LOG_BASE_COMMAND} {{1}} ' --preview-window=bottom:70% "
+            f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} checkout_branch {{1}})' "
+            f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} reset_branch {{1}})' "
+            f"--bind 'alt-k:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} delete_branch {{1}})' "
+            f"--bind 'alt-K:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} force_delete_branch {{1}})' "
+            f"--bind 'alt-c:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} create_branch {{1}})' "
+            f"--bind 'alt-f:execute-silent({TMUX_POPUP} git fetch --all | less -XR)' "
+            f"--bind 'alt-F:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} pull_rebase)' "
+            f"--bind 'alt-P:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes)' "
+            f"--bind 'alt-g:reload-sync({GIT_BRANCH_BASE_COMMAND})' "
+            f"--bind 'alt-q:become(uv run {COMMIT_SCRIPT})' "
+            f"--bind 'alt-t:execute-silent({TMUX_PANE})' "
+            f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
+            "--bind=tab:down,shift-tab:up "
+        )
         self._last_selected_line: int = 0
 
     def run(self, query: Optional[str] = None) -> Tuple[bool, str]:
         try:
             vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' --footer 'Branch History'"
-            output = subprocess.check_output(GIT_BRANCH_BASE_COMMAND + vis_cmd, shell=True, universal_newlines=True)
+            output = subprocess.check_output(
+                GIT_BRANCH_BASE_COMMAND + vis_cmd, shell=True, universal_newlines=True
+            )
             selected_line = get_selected_line(output)
             if selected_line is not None:
                 self._last_selected_line = selected_line
-            branch = self._get_branch_name(output)
-            if branch is None:
-                branch = ""
-            return True, branch
+            return True, get_key(output) or ""
         except subprocess.CalledProcessError as e:
             if e.returncode != FZF_ESC_RET_CODE:
                 exit(e.returncode)
         return False, ""
 
-    def _get_branch_name(self, selection: str) -> Optional[str]:
-        try:
-            branch = selection.split(DELIMITER)[1].split(" ")[0].strip()
-            return branch
-        except Exception:
-            pass
-        return None
 
 class LogPage:
-    def __init__(self, log_limit: int, port:int):
-        self._base_command: str = GIT_LOG_BASE_COMMAND + f" -n{log_limit} "
-        self._vis_command: str  = (f" | gai -f \"\\w\" -v -d {DELIMITER} | "
-                                   f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
-                                   f"--preview 'echo {{}} | {COMMIT_EXTRACT_COMMAND} | xargs git show | bat --color=always --language=Diff ' "
-                                   "--preview-window=bottom:70% "
-                                   f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} checkout_commit {{}})' "
-                                   f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} soft_reset_to_commit {{}})' "
-                                   f"--bind 'alt-X:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} hard_reset_to_commit {{}})' "
-                                   f"--bind 'alt-A:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick {{}})' "
-                                   f"--bind 'alt-a:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick_no_commit {{}})' "
-                                   f"--bind 'alt-t:execute-silent({TMUX_PANE})' "
-                                   f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
-                                   f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches --all | nl -w1 -s\"{DELIMITER}\")+bg-transform-header(Full log)' "
-                                   "--bind=tab:down,shift-tab:up ")
+    """Format: HASH@LINE@display — {1}=hash, {2}=line, {3..}=display"""
 
+    def __init__(self, log_limit: int, port: int):
+        self._base_command: str = GIT_LOG_BASE_COMMAND + f" -n{log_limit} "
+        self._vis_command: str = (
+            f" | {GIT_LOG_FMT_COMMAND} | "
+            f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=3.. "
+            f"--preview 'git show {{1}} | bat --color=always --language=Diff' "
+            "--preview-window=bottom:70% "
+            f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} checkout_commit {{1}})' "
+            f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} soft_reset_to_commit {{1}})' "
+            f"--bind 'alt-X:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} hard_reset_to_commit {{1}})' "
+            f"--bind 'alt-A:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick {{1}})' "
+            f"--bind 'alt-a:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick_no_commit {{1}})' "
+            f"--bind 'alt-t:execute-silent({TMUX_PANE})' "
+            f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
+            f"--bind 'alt-l:reload-sync(git log --oneline --graph --decorate --color --branches --all "
+            f"| {GIT_LOG_FMT_COMMAND})+bg-transform-header(Full log)' "
+            "--bind=tab:down,shift-tab:up "
+        )
         self._last_selected_line: int = 0
 
     def run(self, branch: str = "--all") -> Tuple[bool, str]:
         try:
-            log_cmd = self._base_command +  branch
-            vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' " +\
-                      f"--header 'Branch: {branch}' " + \
-                      f"--bind 'alt-g:reload-sync({log_cmd} | gai -f \"\\w\" -v -d {DELIMITER})+bg-transform-header(Branch: {branch})' "
-
+            log_cmd = self._base_command + branch
+            vis_cmd = (
+                self._vis_command
+                + f" --bind 'load:pos({self._last_selected_line})' "
+                + f"--header 'Branch: {branch}' "
+                + f"--bind 'alt-g:reload-sync({log_cmd} | {GIT_LOG_FMT_COMMAND})+bg-transform-header(Branch: {branch})' "
+            )
             output = subprocess.check_output(log_cmd + vis_cmd, shell=True, universal_newlines=True)
             selected_line = get_selected_line(output)
             if selected_line is not None:
                 self._last_selected_line = selected_line
-            commit_hash = self._get_commit_hash(output)
-            if commit_hash is None:
-                commit_hash = "HEAD"
-            return True, commit_hash
+            return True, get_key(output) or "HEAD"
         except subprocess.CalledProcessError as e:
             if e.returncode != FZF_ESC_RET_CODE:
                 exit(e.returncode)
         return False, ""
 
-    def _get_commit_hash(self, selection: str) -> str:
-        try:
-            hash = selection.split(DELIMITER)[1].strip().split(' ')[1]
-            return hash
-        except Exception:
-            pass
-        return None
 
 class DiffPage:
-    def __init__(self, port:int):
-        self._base_command: str = "git show --pretty= --name-only "
-        self._vis_command: str = (f" | gai -f \"\\w\" -v -d {DELIMITER} | "
-                                  f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=2.. "
-                                  "--preview-window=bottom:70% ")
+    """Format: FILENAME@LINE@display — {1}=filename, {2}=line, {3..}=display"""
+
+    def __init__(self, port: int):
+        self._vis_command: str = (
+            f" | awk -v d='{DELIMITER}' 'NF{{n++;print $0 d n d $0}}' | "
+            f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=3.. "
+            "--preview-window=bottom:70% "
+        )
         self._last_selected_line: int = 0
 
     def run(self, commit_hash: Optional[str] = None) -> Tuple[bool, str]:
@@ -159,15 +150,32 @@ class DiffPage:
             return False, ""
 
         try:
-            vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' " + \
-                      f"--preview 'git show --format= {commit_hash} {{2}} | bat --color=always --language=Diff' "\
-                      f"--header-label 'Info' --bind 'focus:+bg-transform-header:git show {commit_hash} -s' "\
-                      f"--bind 'alt-t:execute-silent({TMUX_PANE})' "\
-                      f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "\
-                      "--bind=tab:down,shift-tab:up "
+            header_line = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%h | %an | %ad | %s', '--date=short', commit_hash],
+                text=True
+            ).strip()
 
-            output = subprocess.check_output(self._base_command + commit_hash + vis_cmd,
-                                             shell=True, universal_newlines=True)
+            list_cmd = (f"{{ printf '%s\\n' '(commit info)'; "
+                        f"git show --pretty= --name-only {commit_hash}; }}")
+
+            vis_cmd = (
+                self._vis_command
+                + f"--bind 'load:pos({self._last_selected_line})' "
+                + f"--header {shlex.quote(header_line)} "
+                + f"--preview '"
+                + f"if [ {{1}} = \"(commit info)\" ]; then "
+                + f"git show {commit_hash} -s | bat --color=always; "
+                + f"else "
+                + f"git show --format= {commit_hash} -- {{1}} | bat --color=always --language=Diff; "
+                + f"fi' "
+                + f"--bind 'alt-t:execute-silent({TMUX_PANE})' "
+                + f"--bind 'alt-r:become(uv run {REPO_SCRIPT})' "
+                + "--bind=tab:down,shift-tab:up "
+            )
+
+            output = subprocess.check_output(
+                list_cmd + vis_cmd, shell=True, universal_newlines=True
+            )
             selected_line = get_selected_line(output)
             if selected_line is not None:
                 self._last_selected_line = selected_line
@@ -177,12 +185,13 @@ class DiffPage:
                 exit(e.returncode)
         return False, ""
 
+
 if __name__ == "__main__":
     cli_args = ArgumentParser(description="Interactive git log")
     cli_args.add_argument("-n", help="log limit", required=False, type=int, default=100, dest="n")
     parsed_args, _ = cli_args.parse_known_args()
 
-    if not is_git_repo():
+    if not pygit2.discover_repository("."):
         print("[ERROR] Not a git repository")
         exit(1)
 
@@ -191,31 +200,12 @@ if __name__ == "__main__":
     tab1 = LogPage(parsed_args.n, port=free_port)
     tab2 = DiffPage(port=free_port)
 
-    payloads = dict(
-        tab0=tab0,
-        tab1=tab1,
-        tab2=tab2
-    )
-
-    payloads_input = dict(
-        tab0="",
-        tab1="--all",
-        tab2=""
-    )
-
+    payloads = dict(tab0=tab0, tab1=tab1, tab2=tab2)
+    payloads_input = dict(tab0="", tab1="--all", tab2="")
     task_graph = dict(
-        tab0 = dict(
-            on_enter = "tab1",
-            on_esc = None,
-        ),
-        tab1 = dict(
-            on_enter = "tab2",
-            on_esc = "tab0",
-        ),
-        tab2 = dict(
-            on_enter = "tab2",
-            on_esc = "tab1",
-        )
+        tab0=dict(on_enter="tab1", on_esc=None),
+        tab1=dict(on_enter="tab2", on_esc="tab0"),
+        tab2=dict(on_enter="tab2", on_esc="tab1"),
     )
 
     key = "tab0"
