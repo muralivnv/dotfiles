@@ -1,0 +1,40 @@
+{
+  "nodes": {
+    "ghostty-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-dH4n2KOL9/W/SQBBPjOGdWDAS3x0LZfMzlbR0PmgLW4=",
+        "type": "file",
+        "url": "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v1.3.1/Ghostty-1.3.1-x86_64.AppImage"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v1.3.1/Ghostty-1.3.1-x86_64.AppImage"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1783148766,
+        "narHash": "sha256-uslt2pqShTIXDdAHRHv2QkYLsVdY8Oqwz0EA48/RSM8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a50de1b7d8a586adc18d2395c19de7d6058e6030",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "ghostty-src": "ghostty-src",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

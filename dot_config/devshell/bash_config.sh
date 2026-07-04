@@ -1,7 +1,3 @@
-source ~/.config/bash_custom_functions.sh
-source ~/.config/fzf_tab/fzf-bash-completion.sh
-
-# set PATH so it includes user's private ~/.local/bin if it exists
 if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
@@ -18,7 +14,7 @@ set +H
 bind -x '"\C-h": __fzf_history__'
 bind -x '"\C-o": __fzf_cd__'
 bind -x '"\C-p": fzf_file_widget'
-bind -x '"\t" : fzf_bash_completion'
+bind -x '"\t": fzf_bash_completion'
 
 alias '..'='cd ..'
 alias gr="uv run $HOME/.config/scripts/git_repo_list.py"
