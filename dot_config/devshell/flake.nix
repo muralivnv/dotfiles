@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    coding-utilities-src.url = "github:muralivnv/coding_utilities";
+    coding-utilities-src.url = "github:muralivnv/coding_utilities?rev=01092b420f4a9c2eef7bf3992a543164c0dc7437";
     ghostty-src = { url = "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v1.3.1/Ghostty-1.3.1-x86_64.AppImage"; flake = false; };
   };
 
@@ -32,7 +32,7 @@
 
         buildInputs = with pkgs; [
           gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix uv moreutils socat
-          coding-utilities ghostty
+          coding-utilities ghostty distrobox
         ];
 
         shellHook = ''
