@@ -2,7 +2,7 @@
 # prompt customization: https://starship.rs/config/#prompt
 
 format = """
-$directory $nix_shell $git_branch $git_state $git_commit $cmd_duration $time
+$directory $git_branch $git_state $git_commit $cmd_duration $time
 $character """
 
 [directory]
