@@ -28,7 +28,7 @@ GIT_BRANCH_BASE_COMMAND = f'uv run {GIT_BRANCH_SCRIPT}'
 GIT_LOG_BASE_COMMAND    = (r'git log --oneline --graph --decorate --color '
                            r'--pretty=format:"%C(auto)%h%Creset %C(bold cyan)%cn%Creset %C(green)%aD%Creset %s"')
 GIT_LOG_FMT_COMMAND     = f'uv run {GIT_LOG_FMT}'
-TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -DE '
+TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -E '
 TMUX_PANE               = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
 
 

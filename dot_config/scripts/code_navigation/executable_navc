@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Lightweight client for the navigation daemon.
 # Sends commands via Unix socket using line-delimited JSON.
 
