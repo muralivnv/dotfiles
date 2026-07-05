@@ -31,7 +31,7 @@
 
     in {
       devShells.${system}.default = pkgs.mkShellNoCC {
-
+        name = "devshell";
         buildInputs = with pkgs; [
           gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix uv moreutils socat
           coding-utilities ghostty distrobox chezmoi

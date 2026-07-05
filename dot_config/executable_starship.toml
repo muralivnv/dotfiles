@@ -2,7 +2,7 @@
 # prompt customization: https://starship.rs/config/#prompt
 
 format = """
-$directory $git_branch $git_state $git_commit $cmd_duration $time
+$directory $nix_shell $git_branch $git_state $git_commit $cmd_duration $time
 $character """
 
 [directory]
@@ -19,3 +19,9 @@ disabled = true
 success_symbol = "🐒"
 error_symbol = "👻"
 
+[nix_shell]
+disabled = false
+impure_msg = '[](bold red)'
+pure_msg = '[](bold green)'
+unknown_msg = '[unknown](bold yellow)'
+format = '[\[ ❄️ $name$state \]](blue) '
