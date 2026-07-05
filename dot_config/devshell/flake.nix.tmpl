@@ -27,18 +27,25 @@
         '';
       };
 
+      flakeDir = "${self}";
+
     in {
       devShells.${system}.default = pkgs.mkShellNoCC {
 
         buildInputs = with pkgs; [
           gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix uv moreutils socat
-          coding-utilities ghostty distrobox
+          coding-utilities ghostty distrobox chezmoi
+
+          # Inject machine-specific packages from chezmoi data
+          {{- range .extra_nix_packages }}
+          {{ . }}
+          {{- end }}
         ];
 
         shellHook = ''
-          source $PWD/bash_custom_functions.sh
-          source $PWD/fzf-bash-completion.sh
-          source $PWD/bash_config.sh
+          source ${flakeDir}/bash_custom_functions.sh
+          source ${flakeDir}/fzf-bash-completion.sh
+          source ${flakeDir}/bash_config.sh
         '';
       };
     };
