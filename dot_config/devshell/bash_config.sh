@@ -14,16 +14,27 @@ fi
 # other
 set +H
 
-bind -x '"\C-h": __fzf_history__'
-bind -x '"\C-o": __fzf_cd__'
-bind -x '"\C-p": fzf_file_widget'
-bind -x '"\t": fzf_bash_completion'
+if command -v fzf &> /dev/null; then
+    bind -x '"\C-h": __fzf_history__'
+    bind -x '"\C-o": __fzf_cd__'
+    bind -x '"\C-p": fzf_file_widget'
+    bind -x '"\t": fzf_bash_completion'
+fi
 
 alias '..'='cd ..'
-alias gr="uv run $HOME/.config/scripts/git_repo_list.py"
-alias gl="uv run $HOME/.config/scripts/git_log.py"
-alias gc="uv run $HOME/.config/scripts/git_commit.py"
-alias yy="yazi"
-export EDITOR=hx
-export GIT_EDITOR=hx
+
+
+if command -v uv &> /dev/null; then
+    alias gr="uv run $HOME/.config/scripts/git_repo_list.py"
+    alias gl="uv run $HOME/.config/scripts/git_log.py"
+    alias gc="uv run $HOME/.config/scripts/git_commit.py"
+fi
+if command -v yazi &> /dev/null; then
+    alias yy="yazi"
+fi
+
+if command -v hx &> /dev/null; then
+    export EDITOR=hx
+    export GIT_EDITOR=hx
+fi
 export COLORTERM=truecolor
