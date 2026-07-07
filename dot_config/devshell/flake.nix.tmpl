@@ -36,8 +36,9 @@
       devShells.${system}.default = pkgs.mkShellNoCC {
         name = "devshell";
         buildInputs = with pkgs; [
-          gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix uv moreutils socat
-          coding-utilities ghostty distrobox chezmoi
+          gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix
+          uv python314 moreutils socat ghostty distrobox chezmoi
+          coding-utilities
 
           # Inject machine-specific packages from chezmoi data
           {{- range .extra_nix_packages }}
@@ -45,7 +46,19 @@
           {{- end }}
         ];
 
+        env = {
+          UV_PYTHON_PREFERENCE = "only-system";
+          UV_PYTHON_DOWNLOADS = "never";
+          UV_PYTHON = "${pkgs.python314}/bin/python";
+        };
+
         shellHook = ''
+          NIX_LIBS="${pkgs.lib.makeLibraryPath [
+            pkgs.stdenv.cc.cc.lib
+            pkgs.libz
+          ]}"
+          export LD_LIBRARY_PATH="$NIX_LIBS''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
+
           source ${flakeDir}/bash_custom_functions.sh
           source ${flakeDir}/fzf-bash-completion.sh
           source ${flakeDir}/bash_config.sh
