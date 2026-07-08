@@ -3,15 +3,17 @@ set -euo pipefail
 
 BASHRC="$HOME/.bashrc"
 DEVSHELL_PATH="$HOME/.config/devshell"
+# Updated: Drops a visible 'profile' symlink right inside your devshell folder
+PROFILE_PATH="$DEVSHELL_PATH/profile"
 
-echo "Building Nix devshell..."
-nix build "${DEVSHELL_PATH}#devShells.x86_64-linux.default" --no-link
+echo "Building and Pinning Nix devshell..."
+# Build the shell environment and create a permanent GC root
+nix develop "${DEVSHELL_PATH}#devShells.x86_64-linux.default" \
+    --profile "$PROFILE_PATH" \
+    --command true
 
-# Get path and define alias
-# Ensure we capture the path cleanly
-GHOSTTY_PATH=$(nix develop "$DEVSHELL_PATH" --command env bash -c "which ghostty")
-
-# Use single quotes for the alias value to prevent issues when sourced later
+# Capture the path using the cached profile
+GHOSTTY_PATH=$(nix develop "$PROFILE_PATH" --command env bash -c "which ghostty")
 GHOSTTY_ALIAS="setsid ${GHOSTTY_PATH} >/dev/null 2>\\&1 \\&"
 
 echo "Injecting Nix devshell hooks into .bashrc"
@@ -22,7 +24,6 @@ END_MARKER="# ---------------------------------------------"
 # Remove existing block
 sed -i "/${START_MARKER//\//\\/}/,/${END_MARKER//\//\\/}/d" "$BASHRC"
 
-# Use a UNIQUE placeholder that won't collide with normal text
 PLACEHOLDER="__INSERT_GHOSTTY_ALIAS_HERE__"
 
 NIX_HOOK=$(cat <<'EOF'
@@ -32,7 +33,8 @@ if [ -z "$IN_NIX_SHELL" ]; then
     if [[ $- == *i* ]] && [[ "$(tty)" == /dev/pts/* ]] && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
         if [ -z "$BASE_DEVSHELL_SHELL_ACTIVE" ]; then
             export BASE_DEVSHELL_SHELL_ACTIVE=1
-            nix develop REPLACE_DEVSHELL_PATH
+            # Boot directly from the GC root profile
+            nix develop REPLACE_PROFILE_PATH
             unset BASE_DEVSHELL_SHELL_ACTIVE
         fi
     fi
@@ -50,12 +52,11 @@ EOF
 )
 
 # Perform replacements
-# Replace Path
 NIX_HOOK="${NIX_HOOK//REPLACE_DEVSHELL_PATH/$DEVSHELL_PATH}"
-# Replace Alias (using the unique placeholder)
+NIX_HOOK="${NIX_HOOK//REPLACE_PROFILE_PATH/$PROFILE_PATH}"
 NIX_HOOK="${NIX_HOOK//PLACEHOLDER/$GHOSTTY_ALIAS}"
 
 # Append
-if ! grep -qF "nix develop $DEVSHELL_PATH" "$BASHRC"; then
+if ! grep -qF "nix develop $PROFILE_PATH" "$BASHRC"; then
     echo "$NIX_HOOK" >> "$BASHRC"
-fi   
+fi
