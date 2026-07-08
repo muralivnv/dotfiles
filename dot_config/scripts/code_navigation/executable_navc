@@ -3,12 +3,11 @@
 # Sends commands via Unix socket using line-delimited JSON.
 
 SOCK=".ronin/nav.sock"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 start_daemon() {
     rm -f "$SOCK" ".ronin/nav.pid"
-    uv run --script "$SCRIPT_DIR/daemon.py" </dev/null >/dev/null 2>&1 &
-    disown
+    nohup uv run --script "$SCRIPT_DIR/daemon.py" </dev/null >/dev/null 2>&1 &
     for _ in $(seq 1 100); do
         [ -S "$SOCK" ] && return 0
         sleep 0.01
