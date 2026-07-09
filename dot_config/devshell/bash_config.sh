@@ -3,7 +3,7 @@ if [ -d "$HOME/.local/bin" ] ; then
 fi
 
 if command -v zoxide &> /dev/null; then
-    export _ZO_DOCTOR=0.
+    export _ZO_DOCTOR=0
     eval "$(zoxide init bash)"
 fi
 
@@ -14,7 +14,8 @@ fi
 # other
 set +H
 
-if command -v fzf &> /dev/null; then
+# check whether fzf is present and we are in interactive shell
+if command -v fzf &> /dev/null && [[ $- =~ i ]]; then
     bind -x '"\C-h": __fzf_history__'
     bind -x '"\C-o": __fzf_cd__'
     bind -x '"\C-p": fzf_file_widget'

@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     coding-utilities-src = {
-    url = "github:muralivnv/coding_utilities?rev=01092b420f4a9c2eef7bf3992a543164c0dc7437";
+    url = "github:muralivnv/coding_utilities?rev=4f9e5e285a3e1019d5a4f014a00458005707f556";
     inputs.nixpkgs.follows = "nixpkgs";
     };
     ghostty-src = { url = "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v1.3.1/Ghostty-1.3.1-x86_64.AppImage"; flake = false; };
@@ -32,13 +32,28 @@
 
       flakeDir = "${self}";
 
+      ## Wrap necessary libs so python and python packages works in isolation safely
+      nixLibs = pkgs.lib.makeLibraryPath [
+        pkgs.stdenv.cc.cc.lib
+        pkgs.libz
+      ];
+      wrappedPython = pkgs.runCommand "python-wrapped" { nativeBuildInputs = [pkgs.makeWrapper]; } ''
+        mkdir -p $out/bin
+        makeWrapper ${pkgs.python314}/bin/python $out/bin/python --prefix LD_LIBRARY_PATH : "${nixLibs}"
+      '';
+      wrappedUv = pkgs.runCommand "uv-wrapped" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
+        mkdir -p $out/bin
+        makeWrapper ${pkgs.uv}/bin/uv $out/bin/uv \
+          --prefix LD_LIBRARY_PATH : "${nixLibs}"
+      '';
+
     in {
       devShells.${system}.default = pkgs.mkShellNoCC {
         name = "devshell";
         buildInputs = with pkgs; [
           gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix
-          uv python314 moreutils socat ghostty distrobox chezmoi
-          coding-utilities
+          moreutils socat ghostty distrobox chezmoi
+          coding-utilities wrappedPython wrappedUv
 
           # Inject machine-specific packages from chezmoi data
           {{- range .extra_nix_packages }}
@@ -49,16 +64,15 @@
         env = {
           UV_PYTHON_PREFERENCE = "only-system";
           UV_PYTHON_DOWNLOADS = "never";
+
+          # IMPORTANT: We keep wrappedPython in buildInputs for interactive shell use, 
+          # but UV_PYTHON *must* point to the raw, unwrapped store path here.
+          # If uv sees a bash wrapper instead of the actual python binary, 
+          # its cache validation fails and it reinstalls the venv on every run.
           UV_PYTHON = "${pkgs.python314}/bin/python";
         };
 
         shellHook = ''
-          NIX_LIBS="${pkgs.lib.makeLibraryPath [
-            pkgs.stdenv.cc.cc.lib
-            pkgs.libz
-          ]}"
-          export LD_LIBRARY_PATH="$NIX_LIBS''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
-
           source ${flakeDir}/bash_custom_functions.sh
           source ${flakeDir}/fzf-bash-completion.sh
           source ${flakeDir}/bash_config.sh

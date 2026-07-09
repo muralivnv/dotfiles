@@ -12,6 +12,9 @@ nix develop "${DEVSHELL_PATH}#devShells.x86_64-linux.default" \
     --profile "$PROFILE_PATH" \
     --command true
 
+# wipe all previous generations of this profile so they don't accumulate
+nix-env --profile "$PROFILE_PATH" --delete-generations old
+
 # Capture the path using the cached profile
 GHOSTTY_PATH=$(nix develop "$PROFILE_PATH" --command env bash -c "which ghostty")
 GHOSTTY_ALIAS="setsid ${GHOSTTY_PATH} >/dev/null 2>\\&1 \\&"
