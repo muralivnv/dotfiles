@@ -30,7 +30,8 @@ prepend_keymap = [
   { on = "8",        run = "plugin relative-motions 8"                                  },
   { on = "9",        run = "plugin relative-motions 9"                                  },
   { on = "!",        run = 'shell "$SHELL" --block --confirm'                           },
-  { on = "M",        run = "plugin mount"}
+  { on = "M",        run = "plugin mount"},
+  { on = "<F1>",     run = "shell 'bat --paging=always ~/.config/yazi/keybind-cheatsheet.md' --block --confirm" }
 ]
 
 [tasks]
