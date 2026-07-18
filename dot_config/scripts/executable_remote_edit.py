@@ -1,282 +1,194 @@
-#!/usr/bin/python3
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.14"
+# dependencies = ["watchfiles", "rich"]
+# ///
 
 import subprocess
-from argparse import ArgumentParser, Namespace
+import argparse
 import os
-import datetime
-from typing import List
-from time import sleep
 import logging
+from watchfiles import watch, DefaultFilter, Change
+from rich.logging import RichHandler
+from rich.console import Console
 
-logging.basicConfig(format="[%(asctime)s] {%(funcName)s:%(lineno)d} %(levelname)s - %(message)s",
-                    datefmt="%d-%b-%y %H:%M:%S")
+# Setup Rich console and logging
+console = Console()
+logging.basicConfig(
+    level="INFO",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True, show_path=False)]
+)
+log = logging.getLogger("sync")
 
-TEMP_DIR = ".temp"
+# Base rsync arguments
+BASE_RSYNC_CMD = [
+    "rsync",
+    # Tells rsync to respect .gitignore files automatically!
+    "--filter=:- .gitignore",
+    "--exclude=**/.git",
+    "--exclude=**/.helix",
+    "--exclude=**/.vscode",
+    "--exclude=**/.cache",
+    "-azP"
+]
 
-GITIGNORE = f"""
-build/**
-install/**
-log/**
-.helix/**
-.vscode/**
-.cache/**
-.textadept/**
-{TEMP_DIR}/**
-"""
+WATCH_ARGS = {
+    "debounce": 500,
+    "step": 100,
+    "watch_filter": DefaultFilter(
+        ignore_dirs=(
+            "__pycache__", "build", ".git", ".hg", ".svn", ".tox",
+            ".venv", ".idea", "node_modules", ".mypy_cache", ".pytest_cache",
+            "install", "log", "dist", "target"
+        ),
+        ignore_entity_patterns=(
+            "\\.py[cod]$", "\\.___jb_...___$", "\\.sw.$", "~$",
+            "^\\.\\#", "^\\.DS_Store$", "^flycheck_", "\\.bck$"
+        )
+    )
+}
 
-RSYNC_CMD = ["rsync",
-             "--exclude=**/.git",
-             "--exclude=**/build",
-             "--exclude=**/install",
-             "--exclude=**/log",
-             "--exclude=**/.helix",
-             "--exclude=**/.vscode",
-             "--exclude=**/.textadept",
-             "--exclude=**/.cache",
-             "-azPe"]
+def get_ssh_mux_args(cli_args: argparse.Namespace) -> list[str]:
+    """Generate multiplexing args keyed to the specific user/host/port combo."""
+    socket_path = f"/tmp/ssh_sync_mux_{cli_args.user_name}@{cli_args.ip_addr}_{cli_args.port}"
+    return [
+        "-o", "ControlMaster=auto",
+        "-o", f"ControlPath={socket_path}",
+        "-o", "ControlPersist=10m"
+    ]
 
-################ SYNC HELPER FUNCTIONS
-def notify_remote_has_changes():
-    os.system("notify-send --urgency=normal \"REMOTE HAS CHANGES\"")
+def get_ssh_base_cmd(cli_args: argparse.Namespace) -> list[str]:
+    """Build the base SSH command with isolated connection reuse and custom port."""
+    cmd = ["ssh", "-p", str(cli_args.port)] + get_ssh_mux_args(cli_args)
+    if cli_args.identity:
+        cmd.extend(["-i", cli_args.identity])
+    return cmd
 
-def notify_merge_fail():
-    os.system("notify-send --urgency=critical --expire-time=1000 \"REMOTE HAS CHANGES\" \"3-way merge is not successful\" ")
+def get_rsync_base_cmd(cli_args: argparse.Namespace) -> list[str]:
+    """Build the rsync command with embedded SSH multiplexing options."""
+    mux_str = " ".join(get_ssh_mux_args(cli_args))
+    ssh_transport = f"ssh -p {cli_args.port} {mux_str}"
+    if cli_args.identity:
+        ssh_transport += f" -i '{cli_args.identity}'"
+    return BASE_RSYNC_CMD + ["-e", ssh_transport]
 
-def get_dirty_files(local_dir: str)->list[str]:
-    dirty_files = []
-    proc = subprocess.Popen(["git", "status", "--porcelain"],
-                             stdout=subprocess.PIPE, cwd=local_dir)
-    for line in proc.stdout:
-        line = line.strip()
-        if any(line):
-            dirty_file = line[line.find(b' '):]
-            dirty_file = dirty_file.decode('utf-8').strip()
-            dirty_file = dirty_file.replace('"', '')
-            dirty_files.append( dirty_file )
-    return dirty_files
+def initial_sync(cli_args: argparse.Namespace) -> None:
+    """Handle the startup sync direction."""
+    if cli_args.init == "skip":
+        log.info("Skipping initial sync as requested.")
+        return
 
-def get_remote_file(cli_args: Namespace,
-                     file: str) -> None:
-    temp_folder = os.path.join(cli_args.local_dir, TEMP_DIR)
-    os.makedirs(temp_folder, exist_ok=True)
+    cmd = get_rsync_base_cmd(cli_args)
+    
+    if cli_args.init == "pull":
+        log.info(f"Pulling from [bold cyan]{cli_args.user_name}@{cli_args.ip_addr}:{cli_args.remote_dir}[/]")
+        cmd += [f"{cli_args.user_name}@{cli_args.ip_addr}:{cli_args.remote_dir}", "."]
+    elif cli_args.init == "push":
+        log.info(f"Pushing to [bold cyan]{cli_args.user_name}@{cli_args.ip_addr}:{cli_args.remote_dir}[/]")
+        cmd += [".", f"{cli_args.user_name}@{cli_args.ip_addr}:{cli_args.remote_dir}"]
 
-    file_rel             = os.path.relpath(file, cli_args.dev_sub_dir)
-    remote_file_path     = os.path.join(cli_args.remote_dir, file_rel)
-    local_temp_file_path = os.path.join(temp_folder, file_rel)
+    result = subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        log.error(f"[red]Initial sync failed:[/] {result.stderr}")
+        exit(1)
 
-    # Use sshpass and scp to copy files from remote to local TEMP folder
-    p = subprocess.Popen(["sshpass", "-p", cli_args.password] + \
-                          RSYNC_CMD + ["ssh", f"{cli_args.user_name}@{cli_args.ip_addr}:{remote_file_path}",
-                          local_temp_file_path])
-    p.wait()
+def push_files_bulk(cli_args: argparse.Namespace, local_file_paths: list[str]) -> None:
+    """Push multiple files in a single rsync transaction to prevent subprocess bottlenecks."""
+    # Convert absolute paths to relative paths based on current directory
+    rel_paths = [os.path.relpath(p, os.getcwd()) for p in local_file_paths]
+    
+    log.info(f"[green]Pushing {len(rel_paths)} file(s)[/]")
+    for p in rel_paths[:3]: # Log up to 3 files to avoid terminal spam
+        log.info(f"  -> {p}")
+    if len(rel_paths) > 3:
+        log.info(f"  ... and {len(rel_paths) - 3} more")
 
-def clean_temp_dir(local_dir: str) -> None:
-    os.system(f"rm {os.path.join(local_dir, TEMP_DIR)}/*")
+    # The -R (--relative) flag tells rsync to create the necessary parent 
+    # directories on the remote side automatically matching the local relative path.
+    cmd = get_rsync_base_cmd(cli_args) + ["-R"] + rel_paths + [
+        f"{cli_args.user_name}@{cli_args.ip_addr}:{cli_args.remote_dir}"
+    ]
+    subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def compute_diff(cli_args: Namespace, file: str) -> List[bool]:
-    file_rel = os.path.relpath(file, cli_args.dev_sub_dir)
-    remote_file_path = os.path.join(cli_args.local_dir, TEMP_DIR, file_rel)
+def delete_remote(cli_args: argparse.Namespace, local_file_path: str) -> None:
+    """Delete a file/folder on the remote server if it was removed locally."""
+    rel_path = os.path.relpath(local_file_path, os.getcwd())
+    remote_path = os.path.join(cli_args.remote_dir, rel_path)
 
-    proc = subprocess.Popen(["git", "diff", "--exit-code", f"HEAD:{file}", remote_file_path],
-                            stdout=subprocess.PIPE, cwd=cli_args.local_dir)
-    proc.wait()
-    return proc.returncode == 1
+    log.info(f"[red]Deleting[/] {rel_path}")
+    
+    cmd = get_ssh_base_cmd(cli_args) + [
+        f"{cli_args.user_name}@{cli_args.ip_addr}",
+        f"rm -rf '{remote_path}'"
+    ]
+    subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def merge_changes_remote_to_local(cli_args: Namespace,
-                                  file: str) -> bool:
-    local_file_path = os.path.join(cli_args.local_dir, file)
+def run_watch_loop(cli_args: argparse.Namespace) -> None:
+    """Watch the local directory and batch sync changes."""
+    watch_path = os.getcwd()
+    
+    console.print("\n[bold green]✅ Synced and ready to edit![/]")
+    console.print(f"[dim]Watching for changes in: {watch_path}[/dim]\n")
 
-    file_rel = os.path.relpath(file, cli_args.dev_sub_dir)
-    remote_file_path = os.path.join(cli_args.local_dir, TEMP_DIR, file_rel)
+    for changes in watch(watch_path, **WATCH_ARGS):
+        files_to_push = []
+        
+        for change, file_path in changes:
+            if change == Change.deleted:
+                delete_remote(cli_args, file_path)
+            else:
+                files_to_push.append(file_path)
+                
+        # Batch push all modified/added files in one network call
+        if files_to_push:
+            push_files_bulk(cli_args, files_to_push)
 
-    # pull base
-    base_file = os.path.join(cli_args.local_dir, TEMP_DIR, "base")
-    os.system(f"cd {cli_args.local_dir} && git show HEAD:{file} > {base_file}")
+def close_mux_connection(cli_args: argparse.Namespace) -> None:
+    """Gracefully close the background SSH multiplexing master connection."""
+    cmd = get_ssh_base_cmd(cli_args) + ["-O", "exit", f"{cli_args.user_name}@{cli_args.ip_addr}"]
+    subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    p = subprocess.Popen(["git", "merge-file", local_file_path, base_file, remote_file_path])
-    p.wait()
-
-    return p.returncode == 0
-
-def merge_changes_local_to_remote(cli_args: Namespace,
-                                  file: str) -> None:
-    local_file_path = os.path.join(cli_args.local_dir, file)
-
-    file_rel = os.path.relpath(file, cli_args.dev_sub_dir)
-    remote_file_path = os.path.join(cli_args.remote_dir, file_rel)
-
-    # Use sshpass and scp to copy the locally edited file back to the remote server
-    p = subprocess.Popen(["sshpass", "-p", cli_args.password] + \
-                         [RSYNC_CMD] + ["ssh", local_file_path, f"{cli_args.user_name}@{cli_args.ip_addr}:{remote_file_path}"])
-    p.wait()
-
-def git_commit(cli_args: Namespace) -> None:
-    p = subprocess.Popen(["git", "add", "*"],
-                         cwd=cli_args.local_dir)
-    p.wait()
-
-    p = subprocess.Popen(["git", "commit", "-m", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-                         cwd=cli_args.local_dir)
-    p.wait()
-
-#####################################
-def cleanup_fs(cli_args: Namespace)->None:
-    os.makedirs(cli_args.local_dir, exist_ok=True)
-
-    # remove .git folder
-    if os.path.exists(os.path.join(cli_args.local_dir, ".git")):
-        p = subprocess.Popen(["rm", "-rf", ".git"],
-                              cwd=cli_args.local_dir)
-        p.wait()
-
-    # clean-up local dev folder
-    dev_dir = os.path.join(cli_args.local_dir, cli_args.dev_sub_dir)
-    if os.path.exists(dev_dir):
-        os.system(f"rm -rf {dev_dir}/*")
-    else:
-        os.makedirs(dev_dir)
-
-def init_git_system(cli_args: Namespace)->None:
-    p = subprocess.Popen(["git", "init"],
-                         cwd=cli_args.local_dir)
-    p.wait()
-
-    with open(os.path.join(cli_args.local_dir, ".gitignore"), "w",
-              encoding="utf-8") as out:
-        out.write(GITIGNORE)
-
-    p = subprocess.Popen(["git", "add", "*"],
-                         cwd=cli_args.local_dir)
-    p.wait()
-
-    p = subprocess.Popen(["git", "commit", "-m", "Initial Commit"],
-                         cwd=cli_args.local_dir)
-    p.wait()
-
-def pull_remote_files(cli_args: Namespace, silent:bool=False)->None:
-    p = subprocess.Popen(["sshpass", "-p", cli_args.password] + \
-                          RSYNC_CMD + ["--quite"] if silent else [] +
-                          ["ssh",
-                          f"{cli_args.user_name}@{cli_args.ip_addr}:{cli_args.remote_dir}",
-                          os.path.join(cli_args.local_dir, cli_args.dev_sub_dir)])
-    p.wait()
-
-def create_tmux_session(cli_args: Namespace)->str:
-    prefix = f"{cli_args.user_name}@{cli_args.ip_addr}_"
-    prefix = prefix.replace(".", "_")
-    try:
-        output = subprocess.check_output(["tmux", "list-sessions", "-F", "#{session_name}"])
-        existing_sessions = output.decode("utf-8").split("\n")
-    except subprocess.CalledProcessError:
-        return f"{prefix}0"
-
-    matching_sessions = [session[len(prefix):] for session in existing_sessions if session.startswith(prefix)]
-    counts = [int(session.split("_")[-1]) for session in matching_sessions]
-    count = max(counts, default=0)
-    return f"{prefix}{count+1}"
-
-def launch_editor_tmux(cli_args: Namespace)->None:
-    session_name = create_tmux_session(cli_args)
-    os.system(f"x-terminal-emulator -e tmux new -s {session_name} &")
-    sleep(0.8) # for tmux session to register
-    os.system(f"tmux send-keys -t '{session_name}' 'cd {cli_args.local_dir} && ${{EDITOR}} {cli_args.local_dir}' Enter")
-
-def launch_editor_non_tmux(cli_args: Namespace)->None:
-    basename = os.path.basename(cli_args.remote_dir)
-    os.system(f"x-terminal-emulator -T \"{cli_args.user_name}@{cli_args.ip_addr}:{basename}\"-e ${{EDITOR}} {cli_args.local_dir} &")
-
-def launch_editor(cli_args: Namespace)->None:
-    if cli_args.launch_editor:
-        if cli_args.tmux:
-            launch_editor_tmux(cli_args)
-        else:
-            launch_editor_non_tmux(cli_args)
-
-def commit(cli_args: Namespace)->None:
-    files = get_dirty_files(cli_args.local_dir)
-    if any(files):
-        logging.info("local-dir is DIRTY, syncing to remote")
-        notify = False
-        for file in files:
-            get_remote_file(cli_args, file)
-            is_file_changed_remote = compute_diff(cli_args,
-                                                  file)
-            notify |= is_file_changed_remote
-            if is_file_changed_remote:
-                logging.warning("remote has changes for file -- %s", file)
-                logging.warning("performing 3-way merge for file -- %s", file)
-                is_success = merge_changes_remote_to_local(cli_args,
-                                                           file)
-                if not is_success:
-                    logging.warning("3-way merge is not successful for file -- %s", file)
-                    notify_merge_fail()
-                clean_temp_dir(cli_args.local_dir)
-
-            logging.info("syncing local changes to remote for file -- %s", file)
-            merge_changes_local_to_remote(cli_args, file)
-        git_commit(cli_args)
-        if notify:
-            logging.warning("remote has changes and has been merged into local")
-            notify_remote_has_changes()
-
-    # if remote has other changes
-    pull_remote_files(cli_args, silent=True)
-    files = get_dirty_files(cli_args.local_dir)
-    if any(files):
-        logging.warning("remote has some other changes for following files")
-        for i, file in enumerate(files):
-            logging.warning(" [%d] : %s", i, file)
-
-        logging.info("committing remote changes")
-        git_commit(cli_args)
-
-def periodic_commit(cli_args: Namespace) -> None:
-    while(True):
-        commit(cli_args)
-        sleep(cli_args.commit_every)
-
-def setup_cli_args()->ArgumentParser:
-    cli = ArgumentParser()
-    cli.add_argument("--username"  , "-u",  type=str, dest="user_name",  required=True)
-    cli.add_argument("--ip",                type=str, dest="ip_addr",    required=True)
-    cli.add_argument("--password"  , "-p",  type=str, dest="password",   required=True)
-    cli.add_argument("--remote-dir", "-r",  type=str, dest="remote_dir", required=True)
-    cli.add_argument("--local-dir" , "-l",  type=str, dest="local_dir",  required=False, default=os.getcwd())
-
-    cli.add_argument("--dev-sub-dir", "-d", type=str, dest="dev_sub_dir", required=False, default="src",
-                     help="this is the sub-directory where source will be pulled")
-
-    cli.add_argument("--commit-every-sec",  type=float, default=5.0, dest="commit_every", required=False)
-    cli.add_argument("--no-editor", action="store_false", default=True, dest="launch_editor")
-    cli.add_argument("--no-tmux", action="store_false", default=True, dest="tmux")
+def setup_cli_args() -> argparse.ArgumentParser:
+    cli = argparse.ArgumentParser(description="Live secure remote file syncer")
+    cli.add_argument("--username", "-u", type=str, dest="user_name", required=True)
+    cli.add_argument("--ip", type=str, dest="ip_addr", required=True)
+    cli.add_argument("--remote-dir", "-r", type=str, dest="remote_dir", required=True)
+    cli.add_argument("--port", "-p", type=int, dest="port", required=False, default=22,
+                     help="Custom SSH port (default: 22)")
+    cli.add_argument("--identity", "-i", type=str, dest="identity", required=False,
+                     help="Path to SSH private key (e.g., ~/.ssh/id_ed25519)")
+    cli.add_argument("--init", choices=["pull", "push", "skip"], default="pull",
+                     help="Initial sync behavior (default: pull)")
     return cli
 
-def parse_args(cli_args: ArgumentParser) -> Namespace:
-    parsed_args, _ = cli_args.parse_known_args()
+def parse_args(cli: argparse.ArgumentParser) -> argparse.Namespace:
+    parsed_args, _ = cli.parse_known_args()
     if not parsed_args.remote_dir.endswith("/"):
         parsed_args.remote_dir = parsed_args.remote_dir + "/"
+        
+    if parsed_args.identity:
+        parsed_args.identity = os.path.expanduser(parsed_args.identity)
+        if not os.path.exists(parsed_args.identity):
+            console.print(f"[bold red]Error:[/] Identity file '{parsed_args.identity}' not found.")
+            exit(1)
+            
     return parsed_args
 
 if __name__ == "__main__":
     cli = setup_cli_args()
     parsed_args = parse_args(cli)
 
-    logging.info("cleaning path -- %s", parsed_args.local_dir)
-    cleanup_fs(parsed_args)
-
-    logging.info("pulling remote %s@%s:%s",
-                 parsed_args.user_name, parsed_args.ip_addr, parsed_args.remote_dir)
-    pull_remote_files(parsed_args)
-
-    logging.info("performing initial commit")
-    init_git_system(parsed_args)
-    launch_editor(parsed_args)
+    initial_sync(parsed_args)
 
     try:
-        periodic_commit(parsed_args)
+        run_watch_loop(parsed_args)
     except KeyboardInterrupt:
-        pass
+        console.print("\n[bold yellow]Exiting gracefully...[/]")
     except Exception as e:
-        print(e)
+        log.error(f"[bold red]Fatal exception:[/bold red] {e}")
     finally:
-        commit(parsed_args)
+        # Ensures the SSH connection doesn't hang open in the background indefinitely
+        close_mux_connection(parsed_args)
