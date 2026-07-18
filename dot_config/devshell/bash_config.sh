@@ -16,9 +16,6 @@ set +H
 
 # check whether fzf is present and we are in interactive shell
 if command -v fzf &> /dev/null && [[ $- =~ i ]]; then
-    bind -x '"\C-h": __fzf_history__'
-    bind -x '"\C-o": __fzf_cd__'
-    bind -x '"\C-p": fzf_file_widget'
     bind -x '"\t": fzf_bash_completion'
 fi
 
@@ -38,4 +35,12 @@ if command -v hx &> /dev/null; then
     export EDITOR=hx
     export GIT_EDITOR=hx
 fi
+
 export COLORTERM=truecolor
+
+[[ -f $HOME/.config/devshell/bash-preexec.sh ]] && source $HOME/.config/devshell/bash-preexec.sh
+if command -v ghatothkacha &> /dev/null; then
+    # : delimited list of items to ignore
+    export GHATOTHKACHA_USER_IGNORE="gc:gl:gr"
+    eval "$(ghatothkacha --init)"
+fi

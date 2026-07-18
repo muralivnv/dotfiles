@@ -19,7 +19,7 @@ if not TREESITTER_TAGS_CONFIG_FILE.is_file():
 _cwd_str = str(Path.cwd())
 _sanitized_cwd = re.sub(r'[^a-zA-Z0-9]', '-', _cwd_str)
 _sanitized_cwd = re.sub(r'-+', '-', _sanitized_cwd).strip('-')
-RONIN_CACHE_DIR = Path.home() / ".cache" / "ronin" / _sanitized_cwd
+RONIN_CACHE_DIR = Path.home() / ".local" / "share" / "ronin" / _sanitized_cwd
 
 LAST_PICKER_STATE_FILE = RONIN_CACHE_DIR / "last-picker-state.txt"
 FRECENCY_FILE = RONIN_CACHE_DIR / "frecency.json"

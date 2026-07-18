@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     coding-utilities-src = {
-      url = "github:muralivnv/coding_utilities?rev=4f9e5e285a3e1019d5a4f014a00458005707f556";
+      url = "github:muralivnv/coding_utilities?rev=ee73c24a9c1b8da82b2b571d8ebfb7d5bb18455b";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ghostty-src = { url = "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v1.3.1/Ghostty-1.3.1-x86_64.AppImage"; flake = false; };
@@ -58,7 +58,7 @@
         buildInputs = with pkgs; [
           gitMinimal fzf bat zoxide starship pastel yazi-unwrapped tmux helix
           moreutils socat ghostty distrobox chezmoi
-          coding-utilities wrappedPython wrappedUv
+          coding-utilities wrappedPython wrappedUv sqlite
 
           # Inject machine-specific packages from chezmoi data
           {{- range .extra_nix_packages }}
@@ -78,7 +78,6 @@
         };
 
         shellHook = ''
-          source ${flakeDir}/bash_custom_functions.sh
           source ${flakeDir}/fzf-bash-completion.sh
           source ${flakeDir}/bash_config.sh
         '';
