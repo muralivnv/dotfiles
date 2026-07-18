@@ -2,11 +2,20 @@
 # Lightweight client for the navigation daemon.
 # Sends commands via Unix socket using line-delimited JSON.
 
-SOCK=".ronin/nav.sock"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+RONIN_CACHE_DIR=$(python -c "
+import sys
+sys.path.insert(0, '$SCRIPT_DIR')
+from config import RONIN_CACHE_DIR
+print(RONIN_CACHE_DIR)
+")
+
+SOCK="$RONIN_CACHE_DIR/nav.sock"
+PID_FILE="$RONIN_CACHE_DIR/nav.pid"
+
 start_daemon() {
-    rm -f "$SOCK" ".ronin/nav.pid"
+    rm -f "$SOCK" "$PID_FILE"
     nohup uv run --script "$SCRIPT_DIR/daemon.py" </dev/null >/dev/null 2>&1 &
     for _ in $(seq 1 100); do
         [ -S "$SOCK" ] && return 0
@@ -53,7 +62,7 @@ MSG=$(printf '{"tmux":"%s","pane":"%s","cmd":"%s","args":%s}' \
 if [ "$CMD" = "stop" ]; then
     [ -S "$SOCK" ] && send_msg "$MSG"
     sleep 0.2
-    rm -f "$SOCK" ".ronin/nav.pid"
+    rm -f "$SOCK" "$PID_FILE"
     exit 0
 fi
 

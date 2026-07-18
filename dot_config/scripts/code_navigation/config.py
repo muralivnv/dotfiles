@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 # Config file locations: project-local (.ronin/) take precedence over user-global (~/.config/ronin/)
 FILE_FILTER_FILE = Path(".ronin/file-filter.txt")
@@ -15,10 +16,15 @@ if not TREESITTER_TAGS_CONFIG_FILE.is_file():
     if not TREESITTER_TAGS_CONFIG_FILE:
         raise FileNotFoundError("config 'treesitter-tags.txt' not found")
 
-LAST_PICKER_STATE_FILE = Path(".ronin/last-picker-state.txt")
-FRECENCY_FILE = Path(".ronin/frecency.json")
-PINS_FILE = Path(".ronin/pins.json")
-SIDEBAR_PANE_FILE = Path(".ronin/sidebar.pane")
+_cwd_str = str(Path.cwd())
+_sanitized_cwd = re.sub(r'[^a-zA-Z0-9]', '-', _cwd_str)
+_sanitized_cwd = re.sub(r'-+', '-', _sanitized_cwd).strip('-')
+RONIN_CACHE_DIR = Path.home() / ".cache" / "ronin" / _sanitized_cwd
+
+LAST_PICKER_STATE_FILE = RONIN_CACHE_DIR / "last-picker-state.txt"
+FRECENCY_FILE = RONIN_CACHE_DIR / "frecency.json"
+PINS_FILE = RONIN_CACHE_DIR / "pins.json"
+SIDEBAR_PANE_FILE = RONIN_CACHE_DIR / "sidebar.pane"
 
 NUM_PIN_SLOTS = 4
 NUM_TRAIL_ENTRIES = 5

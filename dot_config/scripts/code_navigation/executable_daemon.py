@@ -8,7 +8,7 @@
 """Navigation daemon — stays running to handle commands with zero startup cost.
 
 Started automatically by navc on first use. Shuts down after 30 min idle.
-Socket: .ronin/nav.sock (per-project)
+Socket: nav.sock (per-project, located in RONIN_CACHE_DIR)
 
 Protocol: line-delimited JSON.
   Request:  {"tmux":"...","pane":"...","cmd":"...","args":["--flag","val",...]}\n
@@ -26,9 +26,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-SOCK_PATH = ".ronin/nav.sock"
-PID_PATH = ".ronin/nav.pid"
-LOG_PATH = ".ronin/nav-daemon.log"
+from config import RONIN_CACHE_DIR
+
+SOCK_PATH = RONIN_CACHE_DIR / "nav.sock"
+PID_PATH = RONIN_CACHE_DIR / "nav.pid"
+LOG_PATH = RONIN_CACHE_DIR / "nav-daemon.log"
 IDLE_TIMEOUT = 3600  # seconds
 
 
@@ -43,7 +45,7 @@ def log(msg):
 
 def main():
     """Start the navigation daemon: bind the Unix socket and serve commands until idle timeout."""
-    Path(".ronin").mkdir(exist_ok=True)
+    RONIN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     # Handle stale socket/pid
     if os.path.exists(SOCK_PATH):
@@ -71,7 +73,7 @@ def main():
     from frecency import record_edit
 
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(SOCK_PATH)
+    server.bind(str(SOCK_PATH)) # socket bind often expects a string representation
     server.listen(8)
     server.settimeout(1.0)
 

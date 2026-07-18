@@ -30,10 +30,11 @@ from watchfiles import watch, DefaultFilter
 
 from config import (
     PINS_FILE, FRECENCY_FILE, NUM_PIN_SLOTS, NUM_TRAIL_ENTRIES, NUM_SYMBOL_ENTRIES,
+    RONIN_CACHE_DIR
 )
 from frecency import get_recent_files, get_hot_symbols
 
-WATCH_DIR = Path(".ronin")
+WATCH_DIR = RONIN_CACHE_DIR
 WATCH_ARGS = {
     "debounce": 150,
     "step": 50,
