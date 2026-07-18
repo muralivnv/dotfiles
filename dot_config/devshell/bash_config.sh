@@ -24,12 +24,12 @@ fi
 
 alias '..'='cd ..'
 
-
 if command -v uv &> /dev/null; then
     alias gr="uv run $HOME/.config/scripts/git_repo_list.py"
     alias gl="uv run $HOME/.config/scripts/git_log.py"
     alias gc="uv run $HOME/.config/scripts/git_commit.py"
 fi
+
 if command -v yazi &> /dev/null; then
     alias yy="yazi"
 fi

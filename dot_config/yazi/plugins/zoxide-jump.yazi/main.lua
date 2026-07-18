@@ -3,7 +3,7 @@ local function fail(s, ...) ya.notify { title = "Zoxide", content = s:format(...
 local function prompt()
     return ya.input {
     title = "Zoxide - Jump to Folder",
-    position = { "center", w = 50 },
+    pos = { "center", y = 3, w = 50 },
         realtime = false
     }
 end

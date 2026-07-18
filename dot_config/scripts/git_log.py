@@ -56,9 +56,16 @@ class BranchPage:
     """Format: BRANCH_NAME@LINE@display — {1}=branch, {2}=line, {3..}=display"""
 
     def __init__(self, port: int):
+        footer = (
+            "Branch History\n"
+            "Alt +  b:Checkout • c:Create • x:Reset • k:Delete • K:ForceDel • f:Fetch • F:PullReb • P:Push\n"
+            "       q:Commit • g:Reload • t:TmuxPane • r:RepoMenu • Tab/S-Tab:Navigate"
+        )
+        
         self._vis_command: str = (
             f" | fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=3.. "
             f"--preview '{GIT_LOG_BASE_COMMAND} {{1}} ' --preview-window=bottom:70% "
+            f"--footer-border dashed --footer='{footer}' "
             f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} checkout_branch {{1}})' "
             f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} reset_branch {{1}})' "
             f"--bind 'alt-k:execute-silent({TMUX_POPUP} uv run {BRANCH_ACTIONS} delete_branch {{1}})' "
@@ -77,7 +84,7 @@ class BranchPage:
 
     def run(self, query: Optional[str] = None) -> Tuple[bool, str]:
         try:
-            vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' --footer 'Branch History'"
+            vis_cmd = self._vis_command + f" --bind 'load:pos({self._last_selected_line})' "
             output = subprocess.check_output(
                 GIT_BRANCH_BASE_COMMAND + vis_cmd, shell=True, universal_newlines=True
             )
@@ -100,7 +107,7 @@ class LogPage:
             f" | {GIT_LOG_FMT_COMMAND} | "
             f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=3.. "
             f"--preview 'git show {{1}} | bat --color=always --language=Diff' "
-            "--preview-window=bottom:70% "
+            "--preview-window=bottom:70% --footer-border dashed "
             f"--bind 'alt-b:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} checkout_commit {{1}})' "
             f"--bind 'alt-x:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} soft_reset_to_commit {{1}})' "
             f"--bind 'alt-X:execute-silent({TMUX_POPUP} uv run {COMMIT_ACTIONS} hard_reset_to_commit {{1}})' "
@@ -117,10 +124,17 @@ class LogPage:
     def run(self, branch: str = "--all") -> Tuple[bool, str]:
         try:
             log_cmd = self._base_command + branch
+            
+            footer = (
+                f"Branch: {branch}\n"
+                "Alt +  b:Checkout • x:SoftReset • X:HardReset • A:CherryPick • a:CherryPick(NoCommit)\n"
+                "       l:LogAll • g:Reload • t:TmuxPane • r:RepoMenu • Tab/S-Tab:Navigate"
+            )
+            
             vis_cmd = (
                 self._vis_command
                 + f" --bind 'load:pos({self._last_selected_line})' "
-                + f"--header 'Branch: {branch}' "
+                + f"--footer '{footer}' "
                 + f"--bind 'alt-g:reload-sync({log_cmd} | {GIT_LOG_FMT_COMMAND})+bg-transform-header(Branch: {branch})' "
             )
             output = subprocess.check_output(log_cmd + vis_cmd, shell=True, universal_newlines=True)
@@ -138,10 +152,12 @@ class DiffPage:
     """Format: FILENAME@LINE@display — {1}=filename, {2}=line, {3..}=display"""
 
     def __init__(self, port: int):
+        footer = "Alt +  t:TmuxPane • r:RepoMenu • Tab/S-Tab:Navigate"
+        
         self._vis_command: str = (
             f" | awk -v d='{DELIMITER}' 'NF{{n++;print $0 d n d $0}}' | "
             f"fzf --listen {port} --delimiter '{DELIMITER}' --reverse --ansi --with-nth=3.. "
-            "--preview-window=bottom:70% "
+            f"--preview-window=bottom:70% --footer-border dashed --footer='{footer}' "
         )
         self._last_selected_line: int = 0
 
@@ -155,7 +171,7 @@ class DiffPage:
                 text=True
             ).strip()
 
-            list_cmd = (f"{{ printf '%s\\n' '(commit info)'; "
+            list_cmd = (f"{{ printf '%s\n' '(commit info)'; "
                         f"git show --pretty= --name-only {commit_hash}; }}")
 
             vis_cmd = (

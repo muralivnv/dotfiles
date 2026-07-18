@@ -49,10 +49,19 @@ def get_free_port() -> int:
 
 class StatusPage:
     def __init__(self, port: int):
+        footer = (
+            "Git Status\n"
+            "Alt +  s:Stage      • S:StageAll   • u:Unstage\n"
+            "       U:UnstageAll • p:Patch      • k:Restore\n"
+            "       K:Delete     • e:Editor     • c:Commit\n"
+            "       P:Push       • l:LogMenu    • g:Reload\n"
+            "       t:TmuxPane   • r:RepoMenu   • Tab/S-Tab:Nav"
+        )
+
         self._base_command = (
             f"{GIT_STATUS_COMMAND} | fzf --listen {port} --ansi --delimiter '{DELIMITER}' --with-nth=3.. "
             f"--preview-window=right:70% --reverse --cycle "
-            f"{PREVIEW_COMMAND} --footer='Git Status' "
+            f"{PREVIEW_COMMAND} --footer='{footer}' --footer-border dashed "
             f"--bind 'alt-s:execute-silent(git add -- {{2}})+reload-sync({GIT_STATUS_COMMAND})+down' "
             f"--bind 'alt-S:execute-silent(git add -u)+reload-sync({GIT_STATUS_COMMAND})' "
             f"--bind 'alt-u:execute-silent(git restore --staged -- {{2}})+reload-sync({GIT_STATUS_COMMAND})+down' "
