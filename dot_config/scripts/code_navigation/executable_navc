@@ -4,15 +4,16 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-RONIN_CACHE_DIR=$(python -c "
+PATHS=$(python -c "
 import sys
 sys.path.insert(0, '$SCRIPT_DIR')
-from config import RONIN_CACHE_DIR
-print(RONIN_CACHE_DIR)
+from config import SOCK_PATH, PID_PATH
+print(SOCK_PATH)
+print(PID_PATH)
 ")
 
-SOCK="$RONIN_CACHE_DIR/nav.sock"
-PID_FILE="$RONIN_CACHE_DIR/nav.pid"
+SOCK=$(echo "$PATHS" | sed -n '1p')
+PID_FILE=$(echo "$PATHS" | sed -n '2p')
 
 start_daemon() {
     rm -f "$SOCK" "$PID_FILE"

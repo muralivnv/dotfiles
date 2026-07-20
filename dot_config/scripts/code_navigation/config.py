@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import hashlib
 
 # Config file locations: project-local (.ronin/) take precedence over user-global (~/.config/ronin/)
 FILE_FILTER_FILE = Path(".ronin/file-filter.txt")
@@ -25,6 +26,11 @@ LAST_PICKER_STATE_FILE = RONIN_CACHE_DIR / "last-picker-state.txt"
 FRECENCY_FILE = RONIN_CACHE_DIR / "frecency.json"
 PINS_FILE = RONIN_CACHE_DIR / "pins.json"
 SIDEBAR_PANE_FILE = RONIN_CACHE_DIR / "sidebar.pane"
+
+_dir_hash = hashlib.md5(str(RONIN_CACHE_DIR).encode()).hexdigest()[:8]
+SOCK_PATH = f"/tmp/nav-{_dir_hash}.sock"
+PID_PATH = RONIN_CACHE_DIR / "nav.pid"
+LOG_PATH = RONIN_CACHE_DIR / "nav-daemon.log"
 
 NUM_PIN_SLOTS = 4
 NUM_TRAIL_ENTRIES = 5

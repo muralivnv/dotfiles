@@ -26,11 +26,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import RONIN_CACHE_DIR
+from config import RONIN_CACHE_DIR, SOCK_PATH, PID_PATH, LOG_PATH
 
-SOCK_PATH = RONIN_CACHE_DIR / "nav.sock"
-PID_PATH = RONIN_CACHE_DIR / "nav.pid"
-LOG_PATH = RONIN_CACHE_DIR / "nav-daemon.log"
 IDLE_TIMEOUT = 3600  # seconds
 
 
@@ -76,6 +73,8 @@ def main():
     server.bind(str(SOCK_PATH)) # socket bind often expects a string representation
     server.listen(8)
     server.settimeout(1.0)
+
+    log(f"socket created at {str(SOCK_PATH)}")
 
     last_activity = time.monotonic()
     running = True
