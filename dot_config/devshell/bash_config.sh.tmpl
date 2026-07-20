@@ -41,6 +41,6 @@ export COLORTERM=truecolor
 [[ -f $HOME/.config/devshell/bash-preexec.sh ]] && source $HOME/.config/devshell/bash-preexec.sh
 if command -v ghatothkacha &> /dev/null; then
     # : delimited list of items to ignore
-    export GHATOTHKACHA_USER_IGNORE="gc:gl:gr"
+    export GHATOTHKACHA_USER_IGNORE={{ quote .ghatothkacha_user_ignore }}
     eval "$(ghatothkacha --init)"
 fi

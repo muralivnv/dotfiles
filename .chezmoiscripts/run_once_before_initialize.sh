@@ -6,32 +6,38 @@ CHEZMOI_CONFIG_FILE="$CHEZMOI_CONFIG_DIR/chezmoi.toml"
 
 echo "Checking chezmoi configuration at $CHEZMOI_CONFIG_FILE..."
 
-# 1. Create the directory and file if they do not exist
+# Create the directory and file if they do not exist
 mkdir -p "$CHEZMOI_CONFIG_DIR"
 touch "$CHEZMOI_CONFIG_FILE"
 
-# 2. Ensure the [data] section exists
+# Ensure the [data] section exists
 if ! grep -q '^\[data\]' "$CHEZMOI_CONFIG_FILE"; then
     echo "" >> "$CHEZMOI_CONFIG_FILE"
     echo "[data]" >> "$CHEZMOI_CONFIG_FILE"
 fi
 
-# 3. Check for git_repo_list and initialize if missing
+# Check for git_repo_list and initialize if missing
 if ! grep -q '^git_repo_list' "$CHEZMOI_CONFIG_FILE"; then
     awk '/^\[data\]/ { print; print "git_repo_list = [ \"~/.local/share/chezmoi\" ]"; next }1' "$CHEZMOI_CONFIG_FILE" > "${CHEZMOI_CONFIG_FILE}.tmp" && mv "${CHEZMOI_CONFIG_FILE}.tmp" "$CHEZMOI_CONFIG_FILE"
     echo "Initialized git_repo_list."
 fi
 
-# 4. Check for extra_nix_packages and initialize if missing
+# Check for extra_nix_packages and initialize if missing
 if ! grep -q '^extra_nix_packages' "$CHEZMOI_CONFIG_FILE"; then
     awk '/^\[data\]/ { print; print "extra_nix_packages = []"; next }1' "$CHEZMOI_CONFIG_FILE" > "${CHEZMOI_CONFIG_FILE}.tmp" && mv "${CHEZMOI_CONFIG_FILE}.tmp" "$CHEZMOI_CONFIG_FILE"
     echo "Initialized extra_nix_packages."
 fi
 
+# Check for ghatothkacha_user_ignore and initialize if missing
+if ! grep -q '^ghatothkacha_user_ignore' "$CHEZMOI_CONFIG_FILE"; then
+    awk '/^\[data\]/ { print; print "ghatothkacha_user_ignore= \"\""; next }1' "$CHEZMOI_CONFIG_FILE" > "${CHEZMOI_CONFIG_FILE}.tmp" && mv "${CHEZMOI_CONFIG_FILE}.tmp" "$CHEZMOI_CONFIG_FILE"
+    echo "Initialized ghatothkacha_user_ignore."
+fi
+
 echo "chezmoi configuration check complete."
 echo ""
 
-# 5. Nix configuration instructions and interactive prompt
+# Nix configuration instructions and interactive prompt
 echo "========================================================================"
 echo " ACTION REQUIRED: Enable Nix Flakes and Unfree Packages"
 echo "========================================================================"
