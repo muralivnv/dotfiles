@@ -13,17 +13,17 @@
         "treesitterPy": "treesitterPy"
       },
       "locked": {
-        "lastModified": 1784593056,
-        "narHash": "sha256-gSy/C8yH2tgLVcIHfk+WWrW5qGa8/BlHaqT2oZ4MxNc=",
+        "lastModified": 1784612186,
+        "narHash": "sha256-/xE1YFVdaD5n5p+Oz0cHOVhi8yrlTgqKVSPu5BZ3Tu4=",
         "owner": "muralivnv",
         "repo": "coding_utilities",
-        "rev": "083535cc3d3bc4b6e16ce08aeed824c595b90d9f",
+        "rev": "fa7d9a5ac10e055a38f1b22bae8f7b0d4106a4b0",
         "type": "github"
       },
       "original": {
         "owner": "muralivnv",
         "repo": "coding_utilities",
-        "rev": "083535cc3d3bc4b6e16ce08aeed824c595b90d9f",
+        "rev": "fa7d9a5ac10e055a38f1b22bae8f7b0d4106a4b0",
         "type": "github"
       }
     },
