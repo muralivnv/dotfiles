@@ -34,6 +34,11 @@ if ! grep -q '^ghatothkacha_user_ignore' "$CHEZMOI_CONFIG_FILE"; then
     echo "Initialized ghatothkacha_user_ignore."
 fi
 
+if ! grep -q '^ghatothkacha_history_limit' "$CHEZMOI_CONFIG_FILE"; then
+    awk '/^\[data\]/ { print; print "ghatothkacha_history_limit=10000"; next }1' "$CHEZMOI_CONFIG_FILE" > "${CHEZMOI_CONFIG_FILE}.tmp" && mv "${CHEZMOI_CONFIG_FILE}.tmp" "$CHEZMOI_CONFIG_FILE"
+    echo "Initialized ghatothkacha_history_limit."
+fi
+
 echo "chezmoi configuration check complete."
 echo ""
 
