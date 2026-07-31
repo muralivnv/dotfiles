@@ -7,23 +7,24 @@
           "nixpkgs"
         ],
         "pcre2": "pcre2",
+        "termbox": "termbox",
         "treesitter": "treesitter",
         "treesitterC": "treesitterC",
         "treesitterCpp": "treesitterCpp",
         "treesitterPy": "treesitterPy"
       },
       "locked": {
-        "lastModified": 1784612186,
-        "narHash": "sha256-/xE1YFVdaD5n5p+Oz0cHOVhi8yrlTgqKVSPu5BZ3Tu4=",
+        "lastModified": 1785462725,
+        "narHash": "sha256-sqkCAdZ/WgomNCynHu4kVMceCmE4OjD1maUHRkT7NVU=",
         "owner": "muralivnv",
         "repo": "coding_utilities",
-        "rev": "fa7d9a5ac10e055a38f1b22bae8f7b0d4106a4b0",
+        "rev": "92475c0ac34f176fcc3c7932ded746a4b19fb7cf",
         "type": "github"
       },
       "original": {
         "owner": "muralivnv",
         "repo": "coding_utilities",
-        "rev": "fa7d9a5ac10e055a38f1b22bae8f7b0d4106a4b0",
+        "rev": "92475c0ac34f176fcc3c7932ded746a4b19fb7cf",
         "type": "github"
       }
     },
@@ -86,6 +87,19 @@
         "coding-utilities-src": "coding-utilities-src",
         "ghostty-src": "ghostty-src",
         "nixpkgs": "nixpkgs"
+      }
+    },
+    "termbox": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770521394,
+        "narHash": "sha256-6ObpjDkfJpfyHVmA2Mvau5dR+GBUIhXG3sMiQlQ6bps=",
+        "type": "tarball",
+        "url": "https://github.com/termbox/termbox2/archive/605398fa79108412976191e062ea14bd4bd30213.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/termbox/termbox2/archive/605398fa79108412976191e062ea14bd4bd30213.tar.gz"
       }
     },
     "treesitter": {
