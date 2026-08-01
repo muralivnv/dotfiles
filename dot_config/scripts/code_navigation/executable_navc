@@ -1,75 +1,56 @@
 #!/bin/sh
-# Lightweight client for the navigation daemon.
-# Sends commands via Unix socket using line-delimited JSON.
+# Client for the navigation daemon. Sends one tab-delimited line:
+#
+#     TMUX \t PANE \t CMD \t ARG...
+#
+# This runs on every bound key, so it stays a handful of execs: no Python (an
+# interpreter start here would undo the daemon), and no JSON to escape by hand,
+# since the arguments are paths, symbols and integers -- never tabs.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TAB=$(printf '\t')
 
-PATHS=$(python -c "
-import sys
-sys.path.insert(0, '$SCRIPT_DIR')
-from config import SOCK_PATH, PID_PATH
-print(SOCK_PATH)
-print(PID_PATH)
-")
-
-SOCK=$(echo "$PATHS" | sed -n '1p')
-PID_FILE=$(echo "$PATHS" | sed -n '2p')
-
-start_daemon() {
-    rm -f "$SOCK" "$PID_FILE"
-    nohup uv run --script "$SCRIPT_DIR/daemon.py" </dev/null >/dev/null 2>&1 &
-    for _ in $(seq 1 100); do
-        [ -S "$SOCK" ] && return 0
-        sleep 0.01
-    done
-    return 1
-}
-
-send_msg() {
-    printf '%s\n' "$1" | socat -t0 - UNIX-CONNECT:"$SOCK" 2>/dev/null
-}
-
-# Escape a value for use as a JSON string (backslashes first, then double-quotes).
-json_str() {
-    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
-}
-
-# Get tmux pane ID
-PANE=$(tmux display-message -p '#{pane_id}' 2>/dev/null || true)
+# Must match config.py's derivation exactly, or client and daemon look for the
+# socket in two different places: cwd with every non-alphanumeric run collapsed
+# to a single dash, then the first 8 hex digits of that directory's MD5.
+CACHE_DIR="$HOME/.local/share/ronin/$(printf '%s' "$PWD" | sed 's/[^a-zA-Z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//')"
+SOCK="/tmp/nav-$(printf '%s' "$CACHE_DIR" | md5sum | cut -c1-8).sock"
+PID_FILE="$CACHE_DIR/nav.pid"
 
 CMD="$1"
 shift
 
-# Build a JSON array from the remaining positional arguments.
-ARGS_JSON='['
-first=true
+MSG="$TMUX$TAB$(tmux display-message -p '#{pane_id}' 2>/dev/null)$TAB$CMD"
 for arg in "$@"; do
-    if [ "$first" = "true" ]; then
-        first=false
-    else
-        ARGS_JSON="${ARGS_JSON},"
-    fi
-    ARGS_JSON="${ARGS_JSON}\"$(json_str "$arg")\""
+    MSG="$MSG$TAB$arg"
 done
-ARGS_JSON="${ARGS_JSON}]"
 
-MSG=$(printf '{"tmux":"%s","pane":"%s","cmd":"%s","args":%s}' \
-    "$(json_str "$TMUX")" \
-    "$(json_str "$PANE")" \
-    "$(json_str "$CMD")" \
-    "$ARGS_JSON")
+# The daemon acknowledges on receipt, not on completion, so this returns as soon as
+# the command has landed -- a picker that runs for a minute does not hold us open.
+# No ok means undelivered, which is the one failure a client can do something about.
+send() { printf '%s\n' "$MSG" | socat -t1 - UNIX-CONNECT:"$SOCK" 2>/dev/null | grep -q '^ok'; }
 
-# Handle stop: send, wait for cleanup, remove any leftovers
+start_daemon() {
+    rm -f "$SOCK" "$PID_FILE"
+    nohup uv run --script "$SCRIPT_DIR/daemon.py" </dev/null >/dev/null 2>&1 &
+    i=0
+    while [ "$i" -lt 100 ]; do
+        [ -S "$SOCK" ] && return 0
+        sleep 0.01
+        i=$((i + 1))
+    done
+    return 1
+}
+
+# stop is best-effort: tell the daemon, give it a moment, then clear the leftovers.
 if [ "$CMD" = "stop" ]; then
-    [ -S "$SOCK" ] && send_msg "$MSG"
+    [ -S "$SOCK" ] && send
     sleep 0.2
     rm -f "$SOCK" "$PID_FILE"
     exit 0
 fi
 
-# Send, starting daemon if needed
-if [ -S "$SOCK" ]; then
-    send_msg "$MSG" || { start_daemon && send_msg "$MSG"; }
-else
-    start_daemon && send_msg "$MSG"
+if [ -S "$SOCK" ] && send; then
+    exit 0
 fi
+start_daemon && send

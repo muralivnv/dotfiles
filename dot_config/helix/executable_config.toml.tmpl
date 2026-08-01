@@ -116,19 +116,20 @@ x         = "extend_line"
 "s" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc symbols --file %{buffer_name} > /dev/null 2>&1 &"
 "S" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc symbols --current-file %{buffer_name} > /dev/null 2>&1 &"
 "D" = ":pipe-to uv run {{ .chezmoi.homeDir}}/.config/scripts/diagnostics.py > /dev/null 2>&1 &"
-"h" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc frecency > /dev/null 2>&1 &"
 
 # Pin slots — stable positions shown in the sidebar. space 1..4 = jump-to-pin.
 "1" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 1 > /dev/null 2>&1 &"
 "2" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 2 > /dev/null 2>&1 &"
 "3" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 3 > /dev/null 2>&1 &"
 "4" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-pin --slot 4 > /dev/null 2>&1 &"
+
 # Trail — last 5 visited files (skipping current). space 5..9 = jump-to-trail.
 "5" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 0 > /dev/null 2>&1 &"
 "6" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 1 > /dev/null 2>&1 &"
 "7" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 2 > /dev/null 2>&1 &"
 "8" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 3 > /dev/null 2>&1 &"
 "9" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-trail --index 4 > /dev/null 2>&1 &"
+
 # Symbols — top 7 hottest visited symbols. space i,j,k,l,a,e,o = jump-to-symbol.
 "i" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 0 > /dev/null 2>&1 &"
 "j" = ":pipe-to {{ .chezmoi.homeDir}}/.config/scripts/code_navigation/navc jump-symbol --index 1 > /dev/null 2>&1 &"

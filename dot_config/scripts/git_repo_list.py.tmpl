@@ -7,7 +7,6 @@
 
 import subprocess
 from pathlib import Path
-import shlex
 
 {{- if or (not .git_repo_list) (eq (len .git_repo_list) 0) -}}
 {{ fail "git_repo_list is empty – please set it in your local $HOME/chezmoi/chezmoi.toml" }}
@@ -22,11 +21,17 @@ DEV_FOLDERS = [
 REPOS = {d.name: d for d in DEV_FOLDERS}
 SCRIPT_DIR = "{{ dir .chezmoi.targetFile }}"
 
-CMD = "fzf --delimiter \"@\" --reverse "\
-      f"--bind 'enter:become(cd {{ printf "{{2}}" }}; uv run {SCRIPT_DIR}/git_log.py)' "\
-      "--bind=tab:down,shift-tab:up --cycle --with-nth=1"
+HIDE_PAD = " " * 300
+
+CMD = ["tooey", "--prompt", "[ Repo ] ❯ ",
+       "--query-process-command", "gai --no-color -f {{ "{{" }}@QUERY{{ "}}" }}"]
 
 if __name__ == "__main__":
-    p = subprocess.Popen(shlex.split(CMD),
-                       stdin=subprocess.PIPE, text=True)
-    p.communicate(input="\n".join([f"{k}@{v}" for k, v in REPOS.items()]))
+    listing = "".join(f"{k}{HIDE_PAD}\t{v}\n" for k, v in REPOS.items())
+    picked = subprocess.run(CMD, input=listing, text=True, capture_output=True)
+    if picked.returncode != 0 or not picked.stdout.strip():
+        raise SystemExit(picked.returncode if picked.returncode != 130 else 0)
+
+    repo_path = picked.stdout.strip().rsplit("\t", 1)[-1]
+    subprocess.run(["uv", "run", f"{SCRIPT_DIR}/git_log.py"],
+                   cwd=Path(repo_path).expanduser())

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 # imports
+import re
 import subprocess
 from argparse import ArgumentParser
 import os
@@ -8,8 +9,13 @@ from typing import List
 from time import sleep
 
 # globals
-FZF_ERR_CODE_TO_IGNORE = [0, 1, 130]
-FZF_CMD = "fzf -m --reverse --color hl:bright-yellow,hl+:bright-red --scrollbar=▌▐ --border=rounded --margin 2%"
+# tooey: 0 selected, 1 nothing selected, 130 cancelled
+PICKER_ERR_CODE_TO_IGNORE = [0, 1, 130]
+PICKER_CMD = [
+    "tooey",
+    "--prompt", "[ Booku ] ❯ ",
+    "--query-process-command", "gai --no-color -f {{@QUERY@}}",
+]
 
 # helpers
 def parse_link(selection: str) -> List[str]:
@@ -30,8 +36,10 @@ def edit_file(editor: str, bm_filepath: str):
 
 def search(bm_filepath: str):
     try:
-        selection = subprocess.check_output(f"sed -e '/^$/d' -e '/^\\s*#[^()]*$/d' {bm_filepath} | {FZF_CMD}", shell=True)
-        selection = selection.decode("utf8")
+        with open(bm_filepath, encoding="utf-8") as bm:
+            entries = [ln for ln in bm
+                       if ln.strip() and not re.fullmatch(r"\s*#[^()]*\n?", ln)]
+        selection = subprocess.check_output(PICKER_CMD, input="".join(entries), text=True)
         links = parse_link(selection)
         if (links is not None) and (any(links)):
             for link in links:
@@ -39,7 +47,7 @@ def search(bm_filepath: str):
                 sleep(0.3)
 
     except subprocess.CalledProcessError as e:
-        if e.returncode not in FZF_ERR_CODE_TO_IGNORE:
+        if e.returncode not in PICKER_ERR_CODE_TO_IGNORE:
             print(e)
     except Exception as e:
         print(e)

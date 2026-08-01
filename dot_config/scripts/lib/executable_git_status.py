@@ -10,9 +10,12 @@ import pygit2
 cS = "\033[1;32m"  # staged (green)
 cU = "\033[1;31m"  # unstaged (red)
 cQ = "\033[1;34m"  # untracked (blue)
+cC = "\033[1;33m"  # conflicted (yellow)
 c0 = "\033[0m"     # reset
 
 DELIMITER = "@"
+
+HIDE_PAD = " " * 300
 
 INDEX_FLAGS = (
     pygit2.GIT_STATUS_INDEX_NEW
@@ -39,13 +42,15 @@ def main():
         if flags == pygit2.GIT_STATUS_IGNORED:
             continue
 
-        if flags & pygit2.GIT_STATUS_WT_NEW:
-            print(f"?{DELIMITER}{path}{DELIMITER}{cQ}? {c0}{path}")
+        if flags & pygit2.GIT_STATUS_CONFLICTED:
+            print(f"{cC}C {c0}{path}{HIDE_PAD}\tC{DELIMITER}{path}")
+        elif flags & pygit2.GIT_STATUS_WT_NEW:
+            print(f"{cQ}? {c0}{path}{HIDE_PAD}\t?{DELIMITER}{path}")
         else:
             if flags & INDEX_FLAGS:
-                print(f"S{DELIMITER}{path}{DELIMITER}{cS}S {c0}{path}")
+                print(f"{cS}S {c0}{path}{HIDE_PAD}\tS{DELIMITER}{path}")
             if flags & WT_FLAGS:
-                print(f"U{DELIMITER}{path}{DELIMITER}{cU}U {c0}{path}")
+                print(f"{cU}U {c0}{path}{HIDE_PAD}\tU{DELIMITER}{path}")
 
 
 if __name__ == "__main__":

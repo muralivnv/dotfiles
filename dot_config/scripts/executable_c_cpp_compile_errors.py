@@ -7,6 +7,8 @@
 
 import os
 import re
+import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -21,6 +23,11 @@ import shlex
 ERRORS_CACHE_FOLDER = Path(".ronin/c_cpp_compile_errors")
 ERRORS_STATE_FILE   = ERRORS_CACHE_FOLDER / "state.json"
 
+COMPILE_TIMEOUT_S = 300
+
+COMPILER_LAUNCHERS = frozenset({"ccache", "sccache", "distcc", "icecc", "icerun",
+                                "buildcache", "gomacc"})
+
 # Matches: #include "/absolute/path/to/file.cpp"  (CMake Unity build includes)
 UNITY_INCLUDE_RE = re.compile(r'^#include\s+"([^"]+\.(?:cpp|cxx|cc|c))"', re.MULTILINE)
 
@@ -33,14 +40,16 @@ class CompileCommand:
     command: List[str]
     unity_sources: List[str] = field(default_factory=list)
     path_hash: PathHash = field(init=False)
-    content_hash: ContentHash = field(init=False)
+    content_hash: ContentHash = ""
 
     def __post_init__(self):
         self.path_hash = get_file_hash(self.file)
-        # For Unity builds hash the real source files, not the generated wrapper —
-        # the wrapper never changes but its included sources do.
-        sources = self.unity_sources if self.unity_sources else [self.file]
-        self.content_hash = get_combined_content_hash(sources)
+
+    @property
+    def sources(self) -> List[str]:
+        """What to hash: for a Unity build the real sources, not the generated
+        wrapper, which never changes while its includes do."""
+        return self.unity_sources if self.unity_sources else [self.file]
 
 @dataclass
 class TargetFile:
@@ -89,7 +98,42 @@ def extract_command(cmd_entry: Dict) -> List[str]:
     parts = [p for p in parts if not p.startswith("-fdiagnostics-format=")]
     return parts
 
-def get_commands_of_interest(compile_commands_path: str, path_prefix: str, 
+def split_compiler(command: List[str]) -> Tuple[List[str], List[str]]:
+    """Split a command into (compiler words, everything after it).
+
+    The compiler is argv[0], plus whatever follows while argv[0] keeps being a launcher:
+    `ccache g++ -c x.cpp` gives (["ccache", "g++"], ["-c", "x.cpp"]).
+    """
+    end = 1
+    while end < len(command) and Path(command[end - 1]).name.lower() in COMPILER_LAUNCHERS:
+        end += 1
+    return command[:end], command[end:]
+
+
+def replace_compiler(command: List[str], replacement: str) -> List[str]:
+    """Swap the compiler in `command` for `replacement`, which may be several words.
+
+    A compiler is often not one path: "ccache g++", "sccache clang++ --target=arm64", or
+    a path with a space in it. The command is executed as an argv list and never through
+    a shell, so the replacement is split the way a shell would -- quote it if it
+    contains spaces that belong together ("'/opt/my tools/g++'").
+
+    The whole compiler is replaced, launcher included, because that is what
+    compile_commands.json specified as the compiler. To keep a launcher, name it:
+    --cxx "ccache clang++".
+    """
+    words = shlex.split(replacement)
+    if not words:
+        return command
+    return words + split_compiler(command)[1]
+
+
+def is_clang_compiler(command: List[str]) -> bool:
+    """Whether this command runs clang, looking past any launcher in front of it."""
+    return any("clang" in Path(word).name.lower() for word in split_compiler(command)[0])
+
+
+def get_commands_of_interest(compile_commands_path: str, path_prefix: str,
                              cxx: Optional[str], cc: Optional[str],
                              analysis_flags: List[str]) -> Dict[str, CompileCommand]:
     prefix = Path(path_prefix)
@@ -116,25 +160,19 @@ def get_commands_of_interest(compile_commands_path: str, path_prefix: str,
             unity_sources=unity_sources,
         )
         cmd.command.extend(analysis_flags)
-        
-        # Determine language by file extension (.c is C, others are C++)
-        is_c_file = file.suffix == ".c"
-        
-        if is_c_file and cc is not None:
-            cmd.command[0] = cc
-        elif not is_c_file and cxx is not None:
-            cmd.command[0] = cxx
-            
+
+        # Language by file extension: .c is C, everything else C++.
+        replacement = cc if file.suffix == ".c" else cxx
+        if replacement:
+            cmd.command = replace_compiler(cmd.command, replacement)
+
         out[c["file"]] = cmd
     return out
 
 def get_file_hash(file: str) -> str:
-    h = hashlib.new("sha1")
-    h.update(file.encode())
-    return h.hexdigest()
+    return hashlib.blake2b(file.encode(), digest_size=16).hexdigest()
 
 def get_file_content_hash(file: str) -> str:
-    """Use C-optimized hashlib.file_digest"""
     try:
         with open(file, "rb") as f:
             return hashlib.file_digest(f, "blake2b").hexdigest()
@@ -142,7 +180,6 @@ def get_file_content_hash(file: str) -> str:
         return ""
 
 def get_combined_content_hash(files: List[str]) -> str:
-    """Hash the contents of one or more files into a single digest using C-optimized paths."""
     h = hashlib.blake2b()
     for file in sorted(files):
         try:
@@ -152,6 +189,31 @@ def get_combined_content_hash(files: List[str]) -> str:
         except OSError:
             pass
     return h.hexdigest()
+
+def hash_sources(cmds: Dict[str, CompileCommand], pool: ThreadPoolExecutor) -> None:
+    """Fill in every command's content hash, in parallel.
+
+    Reading and digesting thousands of files is I/O bound and hashlib drops the GIL,
+    so the pool that runs the compilers is the right place for it too.
+    """
+    targets = list(cmds.values())
+    for cmd, digest in zip(targets, pool.map(get_combined_content_hash,
+                                             (c.sources for c in targets))):
+        cmd.content_hash = digest
+
+
+def prime_header_hashes(state: State, pool: ThreadPoolExecutor) -> Dict[str, str]:
+    """Hash last run's known headers up front, in parallel.
+
+    get_needs_recompile stops at the first changed dependency, so on a tree where
+    little moved it ends up hashing nearly every header anyway -- one parallel pass is
+    the same work without the wait. On a first run there is no previous state, so this
+    costs nothing.
+    """
+    deps = sorted({dep for target in state.targets.values() for dep in target.header_deps
+                   if os.path.exists(dep)})
+    return dict(zip(deps, pool.map(get_file_content_hash, deps)))
+
 
 def read_cache(cmd: CompileCommand, cached_deps: Set[str]) -> Tuple[Set[str], Set[str]]:
     cache_file = ERRORS_CACHE_FOLDER / f"{cmd.path_hash}.errors"
@@ -224,14 +286,25 @@ def run_cmd(cmd: CompileCommand, prefix_path: Path) -> Tuple[Set[str], Set[str]]
     d_file = ERRORS_CACHE_FOLDER / f"{cmd.path_hash}.d"
     
     # Determine which compiler we are invoking
-    is_clang = "clang" in Path(cmd.command[0]).name.lower()
+    is_clang = is_clang_compiler(cmd.command)
 
     # Inject the correct JSON schema flag
     diag_flag = "-fdiagnostics-format=sarif" if is_clang else "-fdiagnostics-format=json"
     full_cmd = cmd.command + ["-MMD", "-MF", str(d_file), diag_flag]
-    
-    process = subprocess.Popen(full_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    _, stderr_data = process.communicate()
+
+    # Its own session, so a timeout can take the whole tree down: a compiler driver
+    # spawns cc1/ld of its own, and killing only the process we forked leaves those
+    # running with nobody waiting on them.
+    with subprocess.Popen(full_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                          text=True, start_new_session=True) as process:
+        try:
+            _, stderr_data = process.communicate(timeout=COMPILE_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)  # session leader, so pid == pgid
+            process.communicate()
+            # Raised, not swallowed: the caller records a result only for targets that
+            # finished, so a timed-out file stays "changed" and is retried next run.
+            raise RuntimeError(f"timed out after {COMPILE_TIMEOUT_S}s: {cmd.file}") from None
 
     # 1. Parse errors
     errors = set()
@@ -251,20 +324,37 @@ def run_cmd(cmd: CompileCommand, prefix_path: Path) -> Tuple[Set[str], Set[str]]
     return errors, filtered_deps
 
 def load_or_initialize_state(ignore_cache: bool = False) -> State:
+    """Last run's state, or an empty one.
+
+    Anything unreadable is treated as absent rather than fatal -- a truncated file, or
+    one written by an older schema, costs a full re-analysis and nothing worse.
+    """
     if (not ignore_cache) and ERRORS_STATE_FILE.exists():
-        with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
-            try:
+        try:
+            with open(ERRORS_STATE_FILE, "r", encoding="utf8") as infile:
                 return State.from_dict(json.load(infile))
-            except json.JSONDecodeError:
-                pass
+        except (json.JSONDecodeError, OSError, TypeError, KeyError, AttributeError):
+            pass
     return State(targets={}, unique_deps={})
 
-def get_needs_recompile(cmds: Dict[str, CompileCommand], state: State) -> Tuple[Set[str], Set[str], Dict[str, str]]:
-    """Determine which targets need recompilation using purely state and content hashes."""
+
+def save_state(state: State) -> None:
+    """Write the state file atomically, so an interrupted run cannot truncate it."""
+    tmp = ERRORS_STATE_FILE.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf8") as outfile:
+        json.dump(asdict(state), outfile, indent=2, default=json_set_to_list)
+    os.replace(tmp, ERRORS_STATE_FILE)
+
+def get_needs_recompile(cmds: Dict[str, CompileCommand], state: State,
+                        header_hash_cache: Dict[str, str]) -> Tuple[Set[str], Set[str], Dict[str, str]]:
+    """Determine which targets need recompilation using purely state and content hashes.
+
+    `header_hash_cache` comes in warm from prime_header_hashes and is filled in for
+    anything it missed, so the caller can reuse it when rewriting unique_deps.
+    """
     changed_files = set()
     unchanged_files = set()
-    header_hash_cache = {}
-    
+
     for k, cmd in cmds.items():
         if k not in state.targets:
             changed_files.add(k)
@@ -311,7 +401,8 @@ if __name__ == "__main__":
                         type=str, required=False, default=None, dest="cxx")
     parser.add_argument("--cc", help="Use this C compiler instead of default specified in compile_commands.json",
                         type=str, required=False, default=None, dest="cc")
-    parser.add_argument("-j", "--jobs", help="Number threads to use", type=int, required=False, default=4, dest="jobs")
+    parser.add_argument("-j", "--jobs", help="Number threads to use", type=int, required=False,
+                        default=os.cpu_count() or 4, dest="jobs")
     parser.add_argument("--no-cache", help="Ignore caching and perform analysis from scratch",
                         action="store_true", required=False, dest="no_cache")
     parser.add_argument("--analysis-flags", help="Comma separated analysis flags to use",
@@ -323,39 +414,52 @@ if __name__ == "__main__":
     if not Path(args.compile_commands).exists():
         print(f"[ERROR] File {args.compile_commands} do not exist")
         sys.exit(1)
+
+    # Checked once, here: an override that cannot be run would otherwise fail per
+    # translation unit, as a wall of exit-127 errors with no diagnostics in them.
+    for flag, value in (("--cxx", args.cxx), ("--cc", args.cc)):
+        if not value:
+            continue
+        words = shlex.split(value)
+        if not words or shutil.which(words[0]) is None:
+            print(f"[ERROR] {flag} is not runnable: {value!r}")
+            sys.exit(1)
         
-    ERRORS_CACHE_FOLDER.mkdir(exist_ok=True)
+    ERRORS_CACHE_FOLDER.mkdir(parents=True, exist_ok=True)
     resolved_prefix = Path(args.path_prefix).resolve()
 
     state = load_or_initialize_state(args.no_cache)
     cmds = get_commands_of_interest(args.compile_commands, args.path_prefix, args.cxx, args.cc, args.analysis_flags)
-    
-    # 1. Determine exactly what needs recompilation
-    changed_files, unchanged_files, header_hash_cache = get_needs_recompile(cmds, state)
 
-    # 2. Dispatch tasks to thread pool
-    executor = ThreadPoolExecutor(max_workers=args.jobs)
-    futures = { **{executor.submit(run_cmd, cmds[f], resolved_prefix): f for f in changed_files},
-                **{executor.submit(read_cache, cmds[f], state.targets[f].header_deps): f for f in unchanged_files} }
+    # One pool for the whole run: hashing, then compiling. Both are I/O bound and the
+    # `with` is what guarantees the threads are joined even if the loop below raises.
+    with ThreadPoolExecutor(max_workers=args.jobs) as executor:
+        hash_sources(cmds, executor)
+        header_hash_cache = prime_header_hashes(state, executor)
 
-    for future in as_completed(futures):
-        file = futures[future]
+        # 1. Determine exactly what needs recompilation
+        changed_files, unchanged_files, _ = get_needs_recompile(cmds, state, header_hash_cache)
 
-        if file not in state.targets:
-            state.targets[file] = TargetFile(set(), "", "")
-            
-        try:
-            errors, file_deps = future.result()
-            state.targets[file].header_deps = file_deps
-            state.targets[file].content_hash = cmds[file].content_hash
-            state.targets[file].path_hash = cmds[file].path_hash
-            
-            if errors:
-                print(''.join(errors).rstrip('\n'))
-        except Exception as e:
-            print(f"[ERROR] {e}", file=sys.stderr)
+        # 2. Dispatch tasks to thread pool
+        futures = { **{executor.submit(run_cmd, cmds[f], resolved_prefix): f for f in changed_files},
+                    **{executor.submit(read_cache, cmds[f], state.targets[f].header_deps): f for f in unchanged_files} }
 
-    executor.shutdown()
+        for future in as_completed(futures):
+            file = futures[future]
+
+            if file not in state.targets:
+                state.targets[file] = TargetFile(set(), "", "")
+
+            try:
+                errors, file_deps = future.result()
+                state.targets[file].header_deps = file_deps
+                state.targets[file].content_hash = cmds[file].content_hash
+                state.targets[file].path_hash = cmds[file].path_hash
+
+                if errors:
+                    print(''.join(errors).rstrip('\n'))
+            except Exception as e:
+                print(f"[ERROR] {e}", file=sys.stderr)
 
     # 3. Update cached dependencies & Save State
     if not args.no_cache:
@@ -369,7 +473,4 @@ if __name__ == "__main__":
                     new_unique_deps[dep] = header_hash_cache[dep]
                     
         state.unique_deps = new_unique_deps
-        
-        with open(ERRORS_STATE_FILE, "w", encoding="utf8") as outfile:
-            state_dict = asdict(state)
-            json.dump(state_dict, outfile, indent=2, default=json_set_to_list)
+        save_state(state)

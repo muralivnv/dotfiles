@@ -22,6 +22,8 @@ C_RESET       = "\033[0m"
 MAX_BRANCH_LEN = 50
 DELIMITER      = "@"
 
+HIDE_PAD = " " * 300
+
 
 def truncate(s: str) -> str:
     return s[:MAX_BRANCH_LEN - 1] + "…" if len(s) > MAX_BRANCH_LEN else s
@@ -113,11 +115,13 @@ def main():
 
     col_widths = [max(len(strip_ansi(col)) for col in colset) for colset in zip(*printable)]
 
+    # The branch name goes last: it is the field that may contain an '@' of its own,
+    # and the last field keeps whatever delimiters are left.
     for line_num, (full_name, row) in enumerate(zip(full_names, printable), start=1):
         aligned = []
         for col, width in zip(row, col_widths):
             aligned.append(col + " " * (width - len(strip_ansi(col))))
-        print(f"{full_name}{DELIMITER}{line_num}{DELIMITER}{'  '.join(aligned)}")
+        print(f"{'  '.join(aligned)}{HIDE_PAD}\t{line_num}{DELIMITER}{full_name}")
 
 
 if __name__ == "__main__":

@@ -14,9 +14,8 @@ fi
 # other
 set +H
 
-# check whether fzf is present and we are in interactive shell
-if command -v fzf &> /dev/null && [[ $- =~ i ]]; then
-    bind -x '"\t": fzf_bash_completion'
+if command -v tooey &> /dev/null && [[ $- =~ i ]]; then
+    bind -x '"\t": bash_completion'
 fi
 
 alias '..'='cd ..'

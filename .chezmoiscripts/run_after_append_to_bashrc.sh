@@ -42,7 +42,7 @@ if [ -z "$IN_NIX_SHELL" ]; then
         fi
     fi
 else
-    source REPLACE_DEVSHELL_PATH/fzf-bash-completion.sh
+    source REPLACE_DEVSHELL_PATH/bash-completion.sh
     source REPLACE_DEVSHELL_PATH/bash_config.sh
 fi
 # Define ghostty alias if not already defined
