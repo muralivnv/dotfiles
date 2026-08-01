@@ -1,0 +1,74 @@
+# The structure of 'calm'[cite: 1], calibrated perfectly to the contrast of 'ronin'[cite: 2]
+
+"ui.background" = { bg = "background" }
+"ui.text" = "foreground"
+"ui.text.focus" = { bg = "accent_color", fg = "foreground" }
+"ui.linenr" = { bg = "background", fg = "gray" }
+"ui.linenr.selected" = { bg = "highlight_yellow", fg = "foreground" }
+"ui.selection" = { bg = "highlight_yellow" }
+"ui.cursorline" = { bg = "accent_color" }
+"ui.statusline" = { fg = "foreground", bg = "accent_color" }
+"ui.statusline.inactive" = { fg = "gray", bg = "accent_color" }
+"ui.virtual" = "indent"
+"ui.virtual.ruler" = { bg = "accent_color" }
+"ui.virtual.jump-label" = { bg = "highlight_green", fg = "foreground", modifiers = ["bold"] }
+"ui.cursor.match" = { bg = "accent_color" }
+"ui.cursor" = { bg = "cursor", fg = "background" }
+"ui.debug" = { fg = "orange" }
+"ui.highlight.frameline" = { bg = "highlight_yellow" }
+"ui.help" = { fg = "foreground", bg = "accent_color" }
+"ui.popup" = {fg="foreground", bg = "accent_color" }
+"ui.menu" = { fg = "foreground", bg = "accent_color" }
+"ui.menu.selected" = { bg = "highlight_yellow", fg = "foreground" }
+"ui.window" = { bg = "background" }
+"ui.bufferline" = { fg = "foreground", bg = "accent_color" }
+"ui.bufferline.active" = { fg = "foreground", bg = "background" }
+
+# Markup
+"markup.heading" = { fg = "foreground", modifiers = ["bold"] }
+"markup.raw" = { fg = "foreground", bg = "gray" }
+
+# Picker
+"ui.picker.header.column.active" = { fg = "foreground", bg = "highlight_yellow" }
+
+# Diagnostics
+"diagnostic.error" = { bg = "highlight_red", fg = "foreground", modifiers = ["bold"] }
+"diagnostic.warning" = { bg = "highlight_orange", fg = "foreground", modifiers = ["bold"] }
+"diagnostic.hint" = { bg = "indent", fg = "foreground", modifiers = ["bold"] }
+
+error = { bg = "highlight_red", fg = "foreground" }
+warning = { bg = "highlight_orange", fg = "foreground" }
+hint = { bg = "indent", fg = "foreground" }
+
+# Git
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "blue" }
+"diff.minus" = { fg = "red" }
+
+# Syntax
+"string" = "foreground"
+"comment" = { fg = "gray", modifiers = ["bold"] }
+
+[palette]
+# Your proven ergonomic foundation from ronin[cite: 2]
+background       = "#252524" 
+foreground       = "#bfbfbf" 
+
+# UI elements using ronin's native surface colors[cite: 2]
+accent_color     = "#313131" 
+cursor           = "#bfbfbf"
+indent           = "#404040"
+gray             = "#636C6E"
+
+# Accent colors pulled directly from ronin[cite: 2]
+red              = "#ff8665" 
+green            = "#8EC87C"
+blue             = "#65B0B2"
+orange           = "#D19A66"
+yellow           = "#ffce78"
+
+# Custom highlight blocks to maintain the 'calm' layout without glare
+highlight_red    = "#3d2d2a" 
+highlight_orange = "#3d342a" 
+highlight_yellow = "#3d392a" # The soft light-yellow for your selection blocks
+highlight_green  = "#2c3d2c"
