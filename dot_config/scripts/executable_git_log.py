@@ -122,8 +122,9 @@ class LogPage:
             "--action", "alt-X:HardReset=" + SPLIT + f'{TMUX_POPUP} uv run {COMMIT_ACTIONS} hard_reset_to_commit "$k"',
             "--action", "alt-A:CherryPick=" + SPLIT + f'{TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick "$k"',
             "--action", "alt-a:CherryPickNoCommit=" + SPLIT + f'{TMUX_POPUP} uv run {COMMIT_ACTIONS} cherry_pick_no_commit "$k"',
+            "--action", "alt-d:OpenDiff=!" + SPLIT + 'git show $k > /tmp/$k.diff && $EDITOR /tmp/$k.diff',
             "--action", f"alt-t:TmuxPane={TMUX_PANE}",
-            "--action", f"alt-r:RepoMenu==uv run {REPO_SCRIPT}",
+            "--action", f"alt-r:RepoMenu==uv run {REPO_SCRIPT}"
         ]
 
     def run(self, branch: str = "--all") -> Tuple[bool, str]:
@@ -131,7 +132,7 @@ class LogPage:
         footer = (
             f"Branch: {branch}\n"
             "Alt +  b:Checkout • x:SoftReset • X:HardReset • A:CherryPick • a:CherryPick(NoCommit)\n"
-            "       t:TmuxPane • r:RepoMenu"
+            "       d:OpenDiff • t:TmuxPane  • r:RepoMenu"
         )
         producer = f"{self._base_command}{branch} | {GIT_LOG_FMT_COMMAND}"
         picker = self._picker + ["--reload-command", producer, "--footer", footer]
@@ -150,7 +151,7 @@ class DiffPage:
             "--query-process-command", "gai --no-color -f {{@QUERY@}}",
             "--preview-dir", "bottom",
             "--preview-size", "70",
-            "--footer", "Alt +  t:TmuxPane • r:RepoMenu",
+            "--footer", "Alt +  t:TmuxPane • r:RepoMenu • o:OpenFile • d:OpenDiff",
             "--action", f"alt-t:TmuxPane={TMUX_PANE}",
             "--action", f"alt-r:RepoMenu==uv run {REPO_SCRIPT}",
         ]
@@ -174,11 +175,16 @@ class DiffPage:
             f'if [ "$k" = "(commit info)" ]; then git show {commit_hash} -s | bat --color=always; '
             f'else git show --format= {commit_hash} -- "$k" | bat --color=always --language=Diff; fi'
         )
+        alt_o_cmd = SPLIT + f'if [ "$k" != "(commit info)" ]; then f=$(basename "$k"); git show "{commit_hash}:$k" > "/tmp/$f" && $EDITOR "/tmp/$f"; fi'
+        alt_d_cmd = SPLIT + f'if [ "$k" != "(commit info)" ]; then f=$(basename "$k"); git diff {commit_hash}^! -- "$k" > "/tmp/$f.diff" && $EDITOR "/tmp/$f.diff"; fi'
+
         # The commit line goes in the header, where fzf put it.
         picker = self._picker_base + [
             "--header", header_line,
             "--preview-command", preview,
             "--reload-command", producer,
+            "--action", f"alt-o:Open=!{alt_o_cmd}",
+            "--action", f"alt-d:Diff=!{alt_d_cmd}"
         ]
         ok, line = run_picker(producer, picker, self._last_pos)
         if not ok:

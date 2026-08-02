@@ -1,33 +1,5 @@
 {
   "nodes": {
-    "coding-utilities-src": {
-      "inputs": {
-        "mio": "mio",
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "pcre2": "pcre2",
-        "termbox": "termbox",
-        "treesitter": "treesitter",
-        "treesitterC": "treesitterC",
-        "treesitterCpp": "treesitterCpp",
-        "treesitterPy": "treesitterPy"
-      },
-      "locked": {
-        "lastModified": 1785560677,
-        "narHash": "sha256-W9mPIwyZt3OvnQweRbvcgGMb9Olde/m4UY14WhMeBLo=",
-        "owner": "muralivnv",
-        "repo": "coding_utilities",
-        "rev": "f7af0b50cd9b64d63840f1eaba9c348b98d02e46",
-        "type": "github"
-      },
-      "original": {
-        "owner": "muralivnv",
-        "repo": "coding_utilities",
-        "rev": "f7af0b50cd9b64d63840f1eaba9c348b98d02e46",
-        "type": "github"
-      }
-    },
     "ghostty-src": {
       "flake": false,
       "locked": {
@@ -40,17 +12,31 @@
         "url": "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v1.3.1/Ghostty-1.3.1-x86_64.AppImage"
       }
     },
-    "mio": {
-      "flake": false,
+    "koi-src": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "pcre2": "pcre2",
+        "termbox": "termbox",
+        "treesitter": "treesitter",
+        "treesitterC": "treesitterC",
+        "treesitterCpp": "treesitterCpp",
+        "treesitterPy": "treesitterPy"
+      },
       "locked": {
-        "lastModified": 1677836220,
-        "narHash": "sha256-j/wbjyI2v/BsFz2RKi8ZxMKuT+7o5uI4I4yIkUran7I=",
-        "type": "tarball",
-        "url": "https://github.com/vimpunk/mio/archive/8b6b7d878c89e81614d05edca7936de41ccdd2da.tar.gz"
+        "lastModified": 1785715614,
+        "narHash": "sha256-xrFlckhMNuHUEnIIZYQD1Kw+g4b+/KgDPtkq3O8wv9A=",
+        "owner": "muralivnv",
+        "repo": "koi",
+        "rev": "d8a5d07fe5465c5ce3e7e48aa2e69aaef5bd7ddf",
+        "type": "github"
       },
       "original": {
-        "type": "tarball",
-        "url": "https://github.com/vimpunk/mio/archive/8b6b7d878c89e81614d05edca7936de41ccdd2da.tar.gz"
+        "owner": "muralivnv",
+        "repo": "koi",
+        "rev": "d8a5d07fe5465c5ce3e7e48aa2e69aaef5bd7ddf",
+        "type": "github"
       }
     },
     "nixpkgs": {
@@ -84,8 +70,8 @@
     },
     "root": {
       "inputs": {
-        "coding-utilities-src": "coding-utilities-src",
         "ghostty-src": "ghostty-src",
+        "koi-src": "koi-src",
         "nixpkgs": "nixpkgs"
       }
     },

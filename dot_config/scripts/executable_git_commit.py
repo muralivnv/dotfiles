@@ -22,7 +22,7 @@ TMUX_PANE          = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-top
 GIT_STATUS_COMMAND = f"uv run {STATUS_SCRIPT}"
 
 # git_status.py emits <display><padding>\t<status>@<path>
-SPLIT = "sel={{@SELECTION@}}; p=${sel##*$'\\t'}; st=${p%%@*}; f=${p#*@}; "
+SPLIT = "sel={{@SELECTION@}}; p=${sel##*$'\\t'}; st=${p%%@*}; f=${p#*@}; d=$(git rev-parse --show-toplevel); cd $d; "
 
 PREVIEW_COMMAND = SPLIT + (
     'case "$st" in '
@@ -66,14 +66,14 @@ class StatusPage:
             "--action", "alt-S:StageAll=git add -u",
             "--action", "alt-u:Unstage=" + SPLIT + 'git restore --staged -- "$f"',
             "--action", "alt-U:UnstageAll=git restore --staged .",
-            "--action", "alt-k:Restore=" + SPLIT +
+            "--action", "alt-k:Restore=!" + SPLIT +
                         'read -p "Restore $f? [y/N] " c; case "$c" in y) git restore -- "$f";; esac',
-            "--action", "alt-K:Delete=" + SPLIT +
+            "--action", "alt-K:Delete=!" + SPLIT +
                         'read -p "Delete $f? [y/N] " c; case "$c" in y) rm -rf -- "$f";; esac',
-            "--action", "alt-p:Patch=" + PATCH_COMMAND,
+            "--action", "alt-p:Patch=!" + PATCH_COMMAND,
             "--action", "alt-g:Reload=true",
-            "--action", "alt-o:Editor=" + SPLIT + '$EDITOR "$f"',
-            "--action", f"alt-c:Commit=uv run {COMMIT_ACTIONS} commit_changes",
+            "--action", "alt-o:Editor=!" + SPLIT + '$EDITOR "$f"',
+            "--action", f"alt-c:Commit=!uv run {COMMIT_ACTIONS} commit_changes",
             "--action", f"alt-P:Push={TMUX_POPUP} uv run {COMMIT_ACTIONS} push_changes",
             "--action", f"alt-t:TmuxPane={TMUX_PANE}",
             "--action", f"alt-l:LogMenu==uv run {LOG_SCRIPT}",
