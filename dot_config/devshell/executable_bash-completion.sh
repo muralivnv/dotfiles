@@ -375,7 +375,7 @@ _bash_completion_select() {
         return 0
     fi
     _bash_completion_choice="$(printf '%s\n' "${matches[@]}" |
-        tooey --prompt "> $1" --query-process-command 'gai --no-color -f {{@QUERY@}}')"
+        tooey --height 50 --prompt "> $1" --query-process-command 'gai --no-color -f {{@QUERY@}}')"
 }
 
 _bash_completion_expand_alias() {
