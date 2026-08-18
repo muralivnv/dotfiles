@@ -28,13 +28,13 @@ GIT_LOG_BASE_COMMAND    = (r'git log --oneline --graph --decorate --color '
 GIT_LOG_FMT_COMMAND     = f'uv run {GIT_LOG_FMT}'
 TMUX_POPUP              = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -E '
 TMUX_PANE               = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
-
+KOI_DIFF                = "koi --render-mode --language diff"
+KOI_PLAIN               = "koi --render-mode --no-syntax"
 
 HIDE_COLS = 300
 
 # Bash, like the ${} expansions and here-strings these commands already use.
 SPLIT = "sel={{@SELECTION@}}; p=${sel##*$'\\t'}; k=${p#*@}; "
-
 
 def _payload(selection: str) -> list[str]:
     return selection.rstrip("\n").rsplit("\t", 1)[-1].split(DELIMITER, 1)
@@ -80,7 +80,7 @@ class BranchPage:
             "--prompt", "[ Branch ] ❯ ",
             "--footer", footer,
             "--query-process-command", "gai --no-color -f {{@QUERY@}}",
-            "--preview-command", SPLIT + f'{GIT_LOG_BASE_COMMAND} "$k"',
+            "--preview-command", SPLIT + f'{GIT_LOG_BASE_COMMAND} "$k" --',
             "--preview-dir", "bottom",
             "--preview-size", "70",
             "--reload-command", GIT_BRANCH_BASE_COMMAND,
@@ -114,7 +114,7 @@ class LogPage:
             "tooey", "--ansi",
             "--prompt", "[ Log ] ❯ ",
             "--query-process-command", "gai --no-color -f {{@QUERY@}}",
-            "--preview-command", SPLIT + 'git show "$k" | bat --color=always --language=Diff',
+            "--preview-command", SPLIT + f'git show "$k" | {KOI_DIFF}',
             "--preview-dir", "bottom",
             "--preview-size", "70",
             "--action", "alt-b:Checkout=" + SPLIT + f'{TMUX_POPUP} uv run {COMMIT_ACTIONS} checkout_commit "$k"',
@@ -134,7 +134,7 @@ class LogPage:
             "Alt +  b:Checkout • x:SoftReset • X:HardReset • A:CherryPick • a:CherryPick(NoCommit)\n"
             "       d:OpenDiff • t:TmuxPane  • r:RepoMenu"
         )
-        producer = f"{self._base_command}{branch} | {GIT_LOG_FMT_COMMAND}"
+        producer = f"{self._base_command}{branch} -- | {GIT_LOG_FMT_COMMAND}"
         picker = self._picker + ["--reload-command", producer, "--footer", footer]
         ok, line = run_picker(producer, picker, self._last_pos)
         if not ok:
@@ -172,8 +172,8 @@ class DiffPage:
                     f"""'NF{{n++;printf "%s%*s\\t%d@%s\\n", $0, w, "", n, $0}}'""")
 
         preview = SPLIT + (
-            f'if [ "$k" = "(commit info)" ]; then git show {commit_hash} -s | bat --color=always; '
-            f'else git show --format= {commit_hash} -- "$k" | bat --color=always --language=Diff; fi'
+            f'if [ "$k" = "(commit info)" ]; then git show {commit_hash} -s | {KOI_PLAIN}; '
+            f'else git show --format= {commit_hash} -- "$k" | {KOI_DIFF}; fi'
         )
         alt_o_cmd = SPLIT + f'if [ "$k" != "(commit info)" ]; then f=$(basename "$k"); git show "{commit_hash}:$k" > "/tmp/$f" && $EDITOR "/tmp/$f"; fi'
         alt_d_cmd = SPLIT + f'if [ "$k" != "(commit info)" ]; then f=$(basename "$k"); git diff {commit_hash}^! -- "$k" > "/tmp/$f.diff" && $EDITOR "/tmp/$f.diff"; fi'

@@ -15,6 +15,7 @@ PICKER_CMD = [
     "tooey",
     "--prompt", "[ Booku ] ❯ ",
     "--query-process-command", "gai --no-color -f {{@QUERY@}}",
+    "--query", "(?i)"
 ]
 
 # helpers

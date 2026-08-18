@@ -20,7 +20,7 @@ RELOAD_KEY = "M-q"
 
 PREVIEW_CMD = (
     "IFS=: read -r f l c rest <<< {{@SELECTION@}}; "
-    'bat --color=always --highlight-line "$l" '
+    'koi --render-mode --no-syntax --line-numbers --highlight-line "$l" '
     '--line-range "$(( l > 15 ? l - 15 : 1 )):$(( l + 25 ))" "$f"'
 )
 

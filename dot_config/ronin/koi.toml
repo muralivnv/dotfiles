@@ -1,0 +1,3 @@
+[editor]
+
+file-filter = "find . -type f -printf '%P\\n' | gai -e '^(\\.|build|appimage|resources|external|\\.ronin|\\.git)' '(db|spv|png|pgm)$'"

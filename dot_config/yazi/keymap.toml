@@ -31,7 +31,7 @@ prepend_keymap = [
   { on = "9",        run = "plugin relative-motions 9"                                  },
   { on = "!",        run = 'shell "$SHELL" --block --confirm'                           },
   { on = "M",        run = "plugin mount"},
-  { on = "<F1>",     run = "shell 'bat --paging=always ~/.config/yazi/keybind-cheatsheet.md' --block --confirm" }
+  { on = "<F1>",     run = "shell 'koi ~/.config/yazi/keybind-cheatsheet.md' --block --confirm" }
 ]
 
 [tasks]

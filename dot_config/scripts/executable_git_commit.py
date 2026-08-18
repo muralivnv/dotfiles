@@ -20,15 +20,16 @@ COMMIT_ACTIONS     = SCRIPT_DIR / "lib/commit_actions.py"
 TMUX_POPUP         = r'tmux display-popup -w 60% -h 60% -d "$(git rev-parse --show-toplevel)" -E '
 TMUX_PANE          = r'tmux split-window -v -p 40 -c "$(git rev-parse --show-toplevel)" '
 GIT_STATUS_COMMAND = f"uv run {STATUS_SCRIPT}"
+KOI_DIFF           = "koi --render-mode --language diff"
 
 # git_status.py emits <display><padding>\t<status>@<path>
 SPLIT = "sel={{@SELECTION@}}; p=${sel##*$'\\t'}; st=${p%%@*}; f=${p#*@}; d=$(git rev-parse --show-toplevel); cd $d; "
 
 PREVIEW_COMMAND = SPLIT + (
     'case "$st" in '
-    'S) git diff --cached -- "$f" | bat --color=always --language=Diff ;; '
-    'U|C) git diff -- "$f" | bat --color=always --language=Diff ;; '
-    '"?") git diff --no-index /dev/null -- "$f" | bat --color=always --language=Diff ;; '
+    f'S) git diff --cached -- "$f" | {KOI_DIFF} ;; '
+    f'U|C) git diff -- "$f" | {KOI_DIFF} ;; '
+    f'"?") git diff --no-index /dev/null -- "$f" | {KOI_DIFF} ;; '
     "esac"
 )
 
