@@ -7,3 +7,4 @@ bold-is-bright = true
 mouse-hide-while-typing = true
 gtk-titlebar = false
 quick-terminal-animation-duration = 0
+adjust-cursor-thickness = 2
