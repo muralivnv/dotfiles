@@ -42,17 +42,17 @@
         "ts-yaml": "ts-yaml"
       },
       "locked": {
-        "lastModified": 1787034197,
-        "narHash": "sha256-5evHNlzah/0R4SyGQrUip2afm369vD6otlJJmQXaZvg=",
+        "lastModified": 1787235706,
+        "narHash": "sha256-a03ZNAlN9qbYxmPc9ntMhrhxDOTpH+qEK46paTxHUhY=",
         "owner": "muralivnv",
         "repo": "koi",
-        "rev": "f5d3229955f03ae60c82541912323d8069dcb5d0",
+        "rev": "5cc6bf6f32c21fb1630aee9614cf956d78b50cc2",
         "type": "github"
       },
       "original": {
         "owner": "muralivnv",
         "repo": "koi",
-        "rev": "f5d3229955f03ae60c82541912323d8069dcb5d0",
+        "rev": "5cc6bf6f32c21fb1630aee9614cf956d78b50cc2",
         "type": "github"
       }
     },
